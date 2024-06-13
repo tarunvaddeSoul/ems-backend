@@ -1,34 +1,48 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Post, Put, Get, Param, Body } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
 
-@Controller('company')
+@Controller('companies')
+@ApiTags('Companies')
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
   @Post()
-  create(@Body() createCompanyDto: CreateCompanyDto) {
-    return this.companyService.create(createCompanyDto);
+  @ApiOperation({ summary: 'Create a new company' })
+  @ApiResponse({
+    status: 201,
+    description: 'The company has been successfully created.',
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  async createCompany(@Body() data: CreateCompanyDto) {
+    return this.companyService.createCompany(data);
   }
 
-  @Get()
-  findAll() {
-    return this.companyService.findAll();
+  @Put(':id')
+  @ApiOperation({ summary: 'Update a company' })
+  @ApiResponse({
+    status: 200,
+    description: 'The company has been successfully updated.',
+  })
+  @ApiResponse({ status: 404, description: 'Company not found.' })
+  async updateCompany(@Param('id') id: string, @Body() data: UpdateCompanyDto) {
+    return this.companyService.updateCompany(id, data);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.companyService.findOne(+id);
+  @ApiOperation({ summary: 'Get a company by id' })
+  @ApiResponse({ status: 200, description: 'The company data.' })
+  @ApiResponse({ status: 404, description: 'Company not found.' })
+  async getCompanyById(@Param('id') id: string) {
+    return this.companyService.getCompanyById(id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto) {
-    return this.companyService.update(+id, updateCompanyDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.companyService.remove(+id);
+  @Get()
+  @ApiOperation({ summary: 'Get all companies' })
+  @ApiResponse({ status: 200, description: 'The list of companies.' })
+  async getAllCompanies() {
+    return this.companyService.getAllCompanies();
   }
 }

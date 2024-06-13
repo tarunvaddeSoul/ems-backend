@@ -1,26 +1,37 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { CompanyRepository } from './company.repository';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 
 @Injectable()
 export class CompanyService {
-  create(createCompanyDto: CreateCompanyDto) {
-    return 'This action adds a new company';
+  constructor(private readonly companyRepository: CompanyRepository) {}
+
+  async createCompany(data: CreateCompanyDto) {
+    try {
+      return await this.companyRepository.create(data);
+    } catch (error) {
+      throw new Error('Failed to create company');
+    }
   }
 
-  findAll() {
-    return `This action returns all company`;
+  async updateCompany(id: string, data: UpdateCompanyDto) {
+    const company = await this.companyRepository.findById(id);
+    if (!company) {
+      throw new NotFoundException(`Company with id: ${id} does not exist.`);
+    }
+    return this.companyRepository.update(id, data);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} company`;
+  async getCompanyById(id: string) {
+    const company = await this.companyRepository.findById(id);
+    if (!company) {
+      throw new NotFoundException(`Company with id: ${id} does not exist.`);
+    }
+    return company;
   }
 
-  update(id: number, updateCompanyDto: UpdateCompanyDto) {
-    return `This action updates a #${id} company`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} company`;
+  async getAllCompanies() {
+    return this.companyRepository.findAll();
   }
 }
