@@ -1,0 +1,81 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id        String      @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+}
+
+model RefreshToken {
+  id        String      @id @default(uuid())
+  userId    String      @unique
+  token     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ResetToken {
+  id        String      @id @default(uuid())
+  userId    String      @unique
+  token     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id        String      @id @default(uuid())
+  name      String
+  address   String
+  employees Employee[]
+}
+
+model Employee {
+  id        String       @id @default(uuid())
+  name      String
+  photo     String
+  address   String
+  aadhaar   String
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id])
+  attendances Attendance[]
+  salaries   Salary[]
+}
+
+model Attendance {
+  id         String      @id @default(uuid())
+  employeeId String
+  date       DateTime
+  status     Status
+  employee   Employee @relation(fields: [employeeId], references: [id])
+}
+
+enum Status {
+  PRESENT
+  ABSENT
+}
+
+model Salary {
+  id         String      @id @default(uuid())
+  employeeId String
+  amount     Float
+  date       DateTime
+  employee   Employee @relation(fields: [employeeId], references: [id])
+}
+
