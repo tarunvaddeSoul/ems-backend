@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { EmployeeService } from './employee.service';
 import { EmployeeController } from './employee.controller';
 import { EmployeeRepository } from './employee.repository';
@@ -9,6 +9,12 @@ import { ConfigModule } from '@nestjs/config';
 @Module({
   imports: [ConfigModule.forRoot()],
   controllers: [EmployeeController],
-  providers: [EmployeeService, EmployeeRepository, AwsS3Service, PrismaService],
+  providers: [
+    EmployeeService,
+    EmployeeRepository,
+    AwsS3Service,
+    PrismaService,
+    Logger,
+  ],
 })
 export class EmployeeModule {}

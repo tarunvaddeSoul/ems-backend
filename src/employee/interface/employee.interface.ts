@@ -5,4 +5,9 @@ export interface IEmployee {
   address: string;
   aadhaar: string;
   companyId: string;
+  bankName: string;
+  bankAccountName: string;
+  ifsc: string;
+  bankAccountNumber: string;
+  salary: number;
 }

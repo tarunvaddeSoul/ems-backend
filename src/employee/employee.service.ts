@@ -1,38 +1,63 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EmployeeRepository } from './employee.repository';
 import { AwsS3Service } from '../aws/aws-s3.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { Employee } from '@prisma/client';
+import { IEmployee } from './interface/employee.interface';
 
 @Injectable()
 export class EmployeeService {
   constructor(
     private readonly employeeRepository: EmployeeRepository,
     private readonly awsS3Service: AwsS3Service,
+    private readonly logger: Logger,
   ) {}
 
   async createEmployee(
     data: CreateEmployeeDto,
     photo: Express.Multer.File,
     aadhaar: Express.Multer.File,
-  ): Promise<any> {
-    const folder = `employees/${data.name}`;
-    const photoUrl = await this.awsS3Service.uploadFile(
-      photo,
-      `${folder}/photo`,
-    );
-    const aadhaarUrl = await this.awsS3Service.uploadFile(
-      aadhaar,
-      `${folder}/aadhaar`,
-    );
+  ): Promise<Employee | any> {
+    try {
+      const folder = `employees/${data.name}`;
+      const photoUrl = await this.awsS3Service.uploadFile(
+        photo,
+        `${folder}/photo`,
+      );
+      const aadhaarUrl = await this.awsS3Service.uploadFile(
+        aadhaar,
+        `${folder}/aadhaar`,
+      );
 
-    const employeeData = {
-      ...data,
-      photo: photoUrl,
-      aadhaar: aadhaarUrl,
-    };
+      const employeeData: IEmployee = {
+        name: data.name,
+        photo: photoUrl ? photoUrl : '',
+        address: data.address,
+        aadhaar: aadhaarUrl ? aadhaarUrl : '',
+        companyId: data.companyId,
+        bankName: data.bankName,
+        bankAccountName: data.bankAccountName,
+        bankAccountNumber: data.bankAccountNumber,
+        ifsc: data.ifsc,
+        salary: data.salary,
+      };
 
-    return this.employeeRepository.createEmployee(employeeData);
+      const employee = await this.employeeRepository.createEmployee(
+        employeeData,
+      );
+      return {
+        message: 'Employee created successfully',
+        data: employee,
+      };
+
+      return this.employeeRepository.createEmployee(employeeData);
+    } catch (error) {
+      this.logger.error(
+        `Error in creating employee with error ${error.message}`,
+      );
+      throw error;
+    }
   }
 
   async updateEmployee(
@@ -40,42 +65,74 @@ export class EmployeeService {
     data: UpdateEmployeeDto,
     photo?: Express.Multer.File,
     aadhaar?: Express.Multer.File,
-  ): Promise<any> {
-    console.log('inside service', photo, aadhaar);
-
-    const existingEmployee = await this.employeeRepository.getEmployeeById(id);
-    if (!existingEmployee) {
-      throw new NotFoundException(`Employee with ID ${id} not found`);
-    }
-
-    const folder = `employees/${existingEmployee.name}`;
-
-    if (photo) {
-      const key = this.extractKeyFromUrl(existingEmployee.photo);
-      if (key) {
-        await this.awsS3Service.deleteFile(key);
+  ): Promise<Employee | any> {
+    try {
+      const existingEmployee = await this.employeeRepository.getEmployeeById(
+        id,
+      );
+      if (!existingEmployee) {
+        throw new NotFoundException(`Employee with ID ${id} not found`);
       }
 
-      const photoUrl = await this.awsS3Service.uploadFile(
+      const name = data.name || existingEmployee.name;
+      const folder = `employees/${name}`;
+
+      const updateFile = async (
+        file: Express.Multer.File,
+        existingFileUrl: string,
+        fileType: string,
+      ) => {
+        if (file) {
+          const key = this.extractKeyFromUrl(existingFileUrl);
+          if (key) {
+            await this.awsS3Service.deleteFile(key);
+          }
+          return await this.awsS3Service.uploadFile(
+            file,
+            `${folder}/${fileType}`,
+          );
+        }
+        return existingFileUrl;
+      };
+
+      existingEmployee.photo = await updateFile(
         photo,
-        `${folder}/photo`,
+        existingEmployee.photo,
+        'photo',
       );
-      existingEmployee.photo = photoUrl;
-    }
-
-    if (aadhaar) {
-      const key = this.extractKeyFromUrl(existingEmployee.aadhaar);
-      if (key) {
-        await this.awsS3Service.deleteFile(key);
-      }
-      const aadhaarUrl = await this.awsS3Service.uploadFile(
+      existingEmployee.aadhaar = await updateFile(
         aadhaar,
-        `${folder}/aadhaar`,
+        existingEmployee.aadhaar,
+        'aadhaar',
       );
-      existingEmployee.aadhaar = aadhaarUrl;
-    }
 
-    return this.employeeRepository.updateEmployee(id, existingEmployee);
+      const fieldsToUpdate = [
+        'name',
+        'bankAccountName',
+        'bankAccountNumber',
+        'bankName',
+        'ifsc',
+        'salary',
+      ];
+
+      fieldsToUpdate.forEach((field) => {
+        existingEmployee[field] = data[field] || existingEmployee[field];
+      });
+
+      const employee = this.employeeRepository.updateEmployee(
+        id,
+        existingEmployee,
+      );
+      return {
+        message: 'Employee updated successfully',
+        data: employee,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error in updating employee with ID: ${id} with error ${error.message}`,
+      );
+      throw error;
+    }
   }
 
   private extractKeyFromUrl(url: string): string {
@@ -86,11 +143,68 @@ export class EmployeeService {
     return urlParts.slice(3).join('/');
   }
 
-  async getEmployeeById(id: string): Promise<any> {
-    return this.employeeRepository.getEmployeeById(id);
+  async getEmployeeById(id: string): Promise<Employee | any> {
+    try {
+      const employeeResponse = await this.employeeRepository.getEmployeeById(
+        id,
+      );
+      if (!employeeResponse) {
+        throw new NotFoundException(`Employee with ID: ${id} not found.`);
+      }
+      return {
+        message: 'Employee retrieved successfully',
+        data: employeeResponse,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error in fetching employee by ID: ${id} with error ${error.message}`,
+      );
+      throw error;
+    }
   }
 
-  async getAllEmployees(): Promise<any> {
-    return this.employeeRepository.getAllEmployees();
+  async deleteEmployeeById(id: string) {
+    try {
+      const employeeResponse = await this.employeeRepository.getEmployeeById(
+        id,
+      );
+      if (!employeeResponse) {
+        throw new NotFoundException(`Employee with ID: ${id} not found.`);
+      }
+      const photoKey = this.extractKeyFromUrl(employeeResponse.photo);
+      const aadhaarKey = this.extractKeyFromUrl(employeeResponse.aadhaar);
+      if (photoKey) {
+        await this.awsS3Service.deleteFile(photoKey);
+      }
+      if (aadhaarKey) {
+        await this.awsS3Service.deleteFile(aadhaarKey);
+      }
+      const deleteEmployeeResponse =
+        await this.employeeRepository.deleteEmployeeById(id);
+      return {
+        message: 'Employee deleted successfully',
+        data: deleteEmployeeResponse,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error in deleting employee by ID: ${id} with error ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  async getAllEmployees(): Promise<Employee[] | any> {
+    try {
+      const employees = await this.employeeRepository.getAllEmployees();
+      return {
+        message: 'Employee created successfully',
+        data: employees,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error in fetching all employees with error ${error.message}`,
+      );
+      throw error;
+    }
   }
 }

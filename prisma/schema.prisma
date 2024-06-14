@@ -47,16 +47,22 @@ model Company {
 }
 
 model Employee {
-  id        String       @id @default(uuid())
-  name      String
-  photo     String
-  address   String
-  aadhaar   String
-  companyId String
-  company   Company   @relation(fields: [companyId], references: [id])
-  attendances Attendance[]
-  salaries   Salary[]
+  id                String       @id @default(uuid())
+  name              String
+  photo             String
+  address           String
+  salary            Int
+  bankName          String
+  bankAccountName   String
+  bankAccountNumber String      
+  ifsc              String
+  aadhaar           String
+  companyId         String
+  company           Company     @relation(fields: [companyId], references: [id])
+  attendances       Attendance[]
+  salaries          Salary[]
 }
+
 
 model Attendance {
   id         String      @id @default(uuid())
