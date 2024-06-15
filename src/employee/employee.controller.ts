@@ -24,6 +24,7 @@ import {
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
+import { DeleteEmployeesDto } from './dto/delete-employees.dto';
 
 @Controller('employees')
 @UseInterceptors(TransformInterceptor)
@@ -165,6 +166,19 @@ export class EmployeeController {
   })
   async deleteEmployeeById(@Param('id') id: string) {
     return this.employeeService.deleteEmployeeById(id);
+  }
+
+  @Version('1')
+  @Delete()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Delete Multiple Employees',
+    description: 'Delete multiple employees by their IDs',
+  })
+  async deleteMultipleEmployees(
+    @Body() deleteEmployeesDto: DeleteEmployeesDto,
+  ) {
+    return this.employeeService.deleteMultipleEmployees(deleteEmployeesDto.ids);
   }
 
   @Get()

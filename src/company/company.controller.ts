@@ -1,14 +1,30 @@
-import { Controller, Post, Put, Get, Param, Body } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Put,
+  Get,
+  Param,
+  Body,
+  Delete,
+  UseInterceptors,
+  HttpCode,
+  HttpStatus,
+  Version,
+} from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
+import { TransformInterceptor } from 'src/common/transform-interceptor';
+import { DeleteCompaniesDto } from './dto/delete-companies.dto';
 
 @Controller('companies')
+@UseInterceptors(TransformInterceptor)
 @ApiTags('Companies')
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
+  @HttpCode(HttpStatus.CREATED)
   @Post()
   @ApiOperation({ summary: 'Create a new company' })
   @ApiResponse({
@@ -20,6 +36,7 @@ export class CompanyController {
     return this.companyService.createCompany(data);
   }
 
+  @HttpCode(HttpStatus.OK)
   @Put(':id')
   @ApiOperation({ summary: 'Update a company' })
   @ApiResponse({
@@ -31,6 +48,7 @@ export class CompanyController {
     return this.companyService.updateCompany(id, data);
   }
 
+  @HttpCode(HttpStatus.OK)
   @Get(':id')
   @ApiOperation({ summary: 'Get a company by id' })
   @ApiResponse({ status: 200, description: 'The company data.' })
@@ -39,10 +57,35 @@ export class CompanyController {
     return this.companyService.getCompanyById(id);
   }
 
+  @HttpCode(HttpStatus.OK)
   @Get()
   @ApiOperation({ summary: 'Get all companies' })
   @ApiResponse({ status: 200, description: 'The list of companies.' })
   async getAllCompanies() {
     return this.companyService.getAllCompanies();
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete company' })
+  @ApiResponse({ status: 200, description: 'Company deleted successfully.' })
+  @ApiResponse({ status: 404, description: 'Company not found.' })
+  async deleteCompany(
+    @Param('id') id: string,
+  ): Promise<{ message: string; data: any }> {
+    return this.companyService.deleteCompany(id);
+  }
+
+  @Version('1')
+  @Delete()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Delete Multiple Employees',
+    description: 'Delete multiple employees by their IDs',
+  })
+  async deleteMultipleEmployees(
+    @Body() deleteCompaniesDto: DeleteCompaniesDto,
+  ) {
+    return this.companyService.deleteMultipleCompanies(deleteCompaniesDto.ids);
   }
 }

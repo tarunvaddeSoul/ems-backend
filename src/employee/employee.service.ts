@@ -193,6 +193,30 @@ export class EmployeeService {
     }
   }
 
+  async deleteMultipleEmployees(ids: string[]): Promise<{ message: string }> {
+    try {
+      for (const id of ids) {
+        const employee = await this.employeeRepository.getEmployeeById(id);
+        if (!employee) {
+          throw new NotFoundException(`Employee with ID ${id} not found`);
+        }
+        const photoKey = this.extractKeyFromUrl(employee.photo);
+        const aadhaarKey = this.extractKeyFromUrl(employee.aadhaar);
+        if (photoKey) {
+          await this.awsS3Service.deleteFile(photoKey);
+        }
+        if (aadhaarKey) {
+          await this.awsS3Service.deleteFile(aadhaarKey);
+        }
+        await this.employeeRepository.deleteEmployeeById(id);
+      }
+      return { message: 'Employees deleted successfully' };
+    } catch (error) {
+      this.logger.error(`Error deleting employees`);
+      throw error;
+    }
+  }
+
   async getAllEmployees(): Promise<Employee[] | any> {
     try {
       const employees = await this.employeeRepository.getAllEmployees();

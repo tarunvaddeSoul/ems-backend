@@ -1,37 +1,129 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { CompanyRepository } from './company.repository';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 
 @Injectable()
 export class CompanyService {
-  constructor(private readonly companyRepository: CompanyRepository) {}
+  constructor(
+    private readonly companyRepository: CompanyRepository,
+    private readonly logger: Logger,
+  ) {}
 
   async createCompany(data: CreateCompanyDto) {
     try {
-      return await this.companyRepository.create(data);
+      const companyExists = await this.companyRepository.companyExists(
+        data.name,
+      );
+      if (companyExists) {
+        throw new ConflictException(
+          `Company with name: ${data.name} already exists.`,
+        );
+      }
+      const createCompanyResponse = await this.companyRepository.create(data);
+      if (!createCompanyResponse) {
+        throw new BadRequestException(`Error creating company`);
+      }
+      return {
+        message: 'Company created successfully',
+        data: createCompanyResponse,
+      };
     } catch (error) {
-      throw new Error('Failed to create company');
+      this.logger.error(`Error creating company`);
+      throw error;
     }
   }
 
   async updateCompany(id: string, data: UpdateCompanyDto) {
-    const company = await this.companyRepository.findById(id);
-    if (!company) {
-      throw new NotFoundException(`Company with id: ${id} does not exist.`);
+    try {
+      const company = await this.companyRepository.findById(id);
+      if (!company) {
+        throw new NotFoundException(`Company with id: ${id} does not exist.`);
+      }
+      const updateCompanyResponse = await this.companyRepository.update(
+        id,
+        data,
+      );
+      return {
+        message: 'Company updated successfully',
+        data: updateCompanyResponse,
+      };
+    } catch (error) {
+      this.logger.error(`Error updating company`);
+      throw error;
     }
-    return this.companyRepository.update(id, data);
   }
 
   async getCompanyById(id: string) {
-    const company = await this.companyRepository.findById(id);
-    if (!company) {
-      throw new NotFoundException(`Company with id: ${id} does not exist.`);
+    try {
+      const company = await this.companyRepository.findById(id);
+      if (!company) {
+        throw new NotFoundException(`Company with id: ${id} does not exist.`);
+      }
+      return { message: 'Company fetched successfully', data: company };
+    } catch (error) {
+      this.logger.error(`Error fetching company data by id: ${id}`);
+      throw error;
     }
-    return company;
   }
 
   async getAllCompanies() {
-    return this.companyRepository.findAll();
+    try {
+      const companiesResponse = await this.companyRepository.findAll();
+      if (companiesResponse.length === 0) {
+        throw new NotFoundException(`No companies found`);
+      }
+      return {
+        message: 'Companies fetched successfully',
+        data: companiesResponse,
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching companies' data`);
+      throw error;
+    }
+  }
+
+  async deleteCompany(id: string) {
+    try {
+      const company = await this.companyRepository.findById(id);
+      if (!company) {
+        throw new NotFoundException(`Company with id: ${id} does not exist.`);
+      }
+      const deleteCompanyResponse = await this.companyRepository.deleteCompany(
+        id,
+      );
+      if (!deleteCompanyResponse) {
+        throw new BadRequestException(`Error deleting company by id: ${id}`);
+      }
+      return {
+        message: 'Company deleted successfully',
+        data: deleteCompanyResponse,
+      };
+    } catch (error) {
+      this.logger.error(`Error deleting company by id: ${id}`);
+      throw error;
+    }
+  }
+
+  async deleteMultipleCompanies(ids: string[]): Promise<{ message: string }> {
+    try {
+      for (const id of ids) {
+        const company = await this.companyRepository.findById(id);
+        if (!company) {
+          throw new NotFoundException(`Company with ID ${id} not found`);
+        }
+        await this.companyRepository.deleteCompany(id);
+      }
+      return { message: 'Companies deleted successfully' };
+    } catch (error) {
+      this.logger.error(`Error deleting companies`);
+      throw error;
+    }
   }
 }
