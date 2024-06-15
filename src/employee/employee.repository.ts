@@ -53,6 +53,17 @@ export class EmployeeRepository {
     }
   }
 
+  async findMany(ids: string[]): Promise<Employee[]> {
+    try {
+      const employees = await this.prisma.employee.findMany({
+        where: { id: { in: ids } },
+      });
+      return employees;
+    } catch (error) {
+      return error;
+    }
+  }
+
   async getAllEmployees(): Promise<Employee[]> {
     try {
       const employeesResponse = await this.prisma.employee.findMany();

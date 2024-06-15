@@ -3,7 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { GetAttendanceDto } from './dto/get-attendance.dto';
 import { Attendance } from '@prisma/client';
-import * as moment from 'moment-timezone';
+import { Status } from './enum/attendance-status.enum';
 
 @Injectable()
 export class AttendanceRepository {
@@ -34,17 +34,8 @@ export class AttendanceRepository {
       const { employeeId, month } = getAttendanceDto;
       const [year, monthIndex] = month.split('-').map(Number);
 
-      // Correctly create the start and end dates in IST timezone
-      const startDate = moment
-        .tz(`${year}-${monthIndex}-01`, 'YYYY-MM-DD', 'Asia/Kolkata')
-        .startOf('day')
-        .toDate();
-      const endDate = moment
-        .tz(`${year}-${monthIndex}`, 'YYYY-MM', 'Asia/Kolkata')
-        .endOf('month')
-        .endOf('day')
-        .toDate();
-
+      const startDate = new Date(year, monthIndex - 1, 1);
+      const endDate = new Date(year, monthIndex, 0);
       // Count present days
       const presentCount = await this.prisma.attendance.count({
         where: {
@@ -81,6 +72,21 @@ export class AttendanceRepository {
         where: { id },
       });
       return attendance;
+    } catch (error) {
+      return error;
+    }
+  }
+
+  async createMany(employeeIds: string[], dateObject: Date, status: Status) {
+    try {
+      const attendances = await this.prisma.attendance.createMany({
+        data: employeeIds.map((employeeId) => ({
+          employeeId,
+          date: dateObject,
+          status,
+        })),
+      });
+      return attendances;
     } catch (error) {
       return error;
     }

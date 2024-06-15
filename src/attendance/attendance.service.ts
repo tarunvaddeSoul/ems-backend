@@ -8,6 +8,8 @@ import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { GetAttendanceDto } from './dto/get-attendance.dto';
 import { AttendanceRepository } from './attendance.repository';
 import { EmployeeRepository } from 'src/employee/employee.repository';
+import { BulkMarkAttendanceDto } from './dto/bulk-mark-attendance.dto';
+import { Attendance } from '@prisma/client';
 
 @Injectable()
 export class AttendanceService {
@@ -42,6 +44,31 @@ export class AttendanceService {
       this.logger.error(
         `Error marking attendance of employee with ID: ${markAttendanceDto.employeeId}`,
       );
+      throw error;
+    }
+  }
+
+  async bulkMarkAttendance(
+    bulkMarkAttendanceDto: BulkMarkAttendanceDto,
+  ): Promise<{ message: string; data: Attendance[] }> {
+    try {
+      const { employeeIds, date, status } = bulkMarkAttendanceDto;
+      const dateObject = new Date(date);
+      const employees = await this.employeeRepository.findMany(employeeIds);
+      if (employees.length !== employeeIds.length) {
+        throw new NotFoundException('Some employee records not found.');
+      }
+      const attendances = await this.attendanceRepository.createMany(
+        employeeIds,
+        dateObject,
+        status,
+      );
+      return {
+        message: 'Marked attendance successfully',
+        data: attendances,
+      };
+    } catch (error) {
+      this.logger.error(`Error marking attendance of employees`);
       throw error;
     }
   }

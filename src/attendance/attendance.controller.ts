@@ -14,6 +14,7 @@ import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { GetAttendanceDto } from './dto/get-attendance.dto';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DeleteAttendanceDto } from './dto/delete-attendance.dto';
+import { BulkMarkAttendanceDto } from './dto/bulk-mark-attendance.dto';
 
 @ApiTags('Attendance')
 @Controller('attendance')
@@ -30,6 +31,18 @@ export class AttendanceController {
       markAttendanceDto,
     );
     return attendance;
+  }
+
+  @Post('bulk')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Bulk Mark Attendance',
+    description: 'Mark attendance for multiple employees',
+  })
+  async bulkMarkAttendance(
+    @Body() bulkMarkAttendanceDto: BulkMarkAttendanceDto,
+  ) {
+    await this.attendanceService.bulkMarkAttendance(bulkMarkAttendanceDto);
   }
 
   @HttpCode(HttpStatus.OK)
