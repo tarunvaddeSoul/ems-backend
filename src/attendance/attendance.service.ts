@@ -19,7 +19,7 @@ export class AttendanceService {
 
   async markAttendance(markAttendanceDto: MarkAttendanceDto) {
     try {
-      const employee = this.employeeRepository.getEmployeeById(
+      const employee = await this.employeeRepository.getEmployeeById(
         markAttendanceDto.employeeId,
       );
       if (!employee) {
@@ -48,7 +48,7 @@ export class AttendanceService {
 
   async getTotalAttendance(getAttendanceDto: GetAttendanceDto) {
     try {
-      const employee = this.employeeRepository.getEmployeeById(
+      const employee = await this.employeeRepository.getEmployeeById(
         getAttendanceDto.employeeId,
       );
       if (!employee) {
@@ -71,6 +71,45 @@ export class AttendanceService {
       this.logger.error(
         `Error getting attendance of employee with ID: ${getAttendanceDto.employeeId}`,
       );
+      throw error;
+    }
+  }
+
+  async deleteAttendanceById(id: string) {
+    try {
+      const attendance = await this.attendanceRepository.getAttendanceById(id);
+      if (!attendance) {
+        throw new NotFoundException(
+          `Attendance record with ID ${id} not found.`,
+        );
+      }
+      const deleteResponse =
+        await this.attendanceRepository.deleteAttendanceById(id);
+      return {
+        message: 'Attendance record deleted successfully',
+        data: deleteResponse,
+      };
+    } catch (error) {
+      this.logger.error(`Error in deleting attendance record of ID: ${id}`);
+      throw error;
+    }
+  }
+
+  async deleteMultipleAttendances(ids: string[]) {
+    try {
+      const attendances = await this.attendanceRepository.getAttendanceRecords(
+        ids,
+      );
+      if (attendances.length !== ids.length) {
+        throw new NotFoundException('Some attendance records not found.');
+      }
+      const deleteResponse = await this.attendanceRepository.deleteMany(ids);
+      return {
+        message: 'Attendance records deleted successfully',
+        data: deleteResponse,
+      };
+    } catch (error) {
+      this.logger.error(`Error deleting attendance records`);
       throw error;
     }
   }

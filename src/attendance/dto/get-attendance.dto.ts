@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsDateString, IsString } from 'class-validator';
+import { IsNotEmpty, IsDateString, IsString, Matches } from 'class-validator';
 
 export class GetAttendanceDto {
   @IsNotEmpty()
@@ -10,5 +10,6 @@ export class GetAttendanceDto {
   @ApiProperty({ type: 'string', required: true })
   @IsNotEmpty()
   @IsDateString()
+  @Matches(/^\d{4}-\d{2}$/)
   month: string; // Format: YYYY-MM
 }

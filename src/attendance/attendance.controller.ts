@@ -6,11 +6,14 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Delete,
+  Param,
 } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { GetAttendanceDto } from './dto/get-attendance.dto';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { DeleteAttendanceDto } from './dto/delete-attendance.dto';
 
 @ApiTags('Attendance')
 @Controller('attendance')
@@ -42,5 +45,29 @@ export class AttendanceController {
       getAttendanceDto,
     );
     return totalAttendance;
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete Attendance',
+    description: 'Delete attendance by ID',
+  })
+  async deleteAttendanceById(@Param('id') id: string) {
+    await this.attendanceService.deleteAttendanceById(id);
+  }
+
+  @Delete()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete Multiple Attendances',
+    description: 'Delete multiple attendance records',
+  })
+  async deleteMultipleAttendances(
+    @Body() deleteAttendanceDto: DeleteAttendanceDto,
+  ) {
+    await this.attendanceService.deleteMultipleAttendances(
+      deleteAttendanceDto.ids,
+    );
   }
 }
