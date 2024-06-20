@@ -8,6 +8,7 @@ import { jwt_config } from '../auth/config/jwt';
 import { UsersRepository } from './users.repository';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MailService } from './mail.service';
+import { DepartmentRepository } from 'src/departments/department.repository';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { MailService } from './mail.service';
     UsersRepository,
     PrismaService,
     MailService,
+    DepartmentRepository,
   ],
 })
 export class UsersModule {}

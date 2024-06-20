@@ -13,17 +13,35 @@ enum Role {
 }
 
 model User {
-  id        String      @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role
-  createdAt DateTime @default(now())
+  id           String           @id @default(uuid())
+  name         String
+  email        String           @unique
+  department   UserDepartment   @relation(fields: [departmentId], references: [id])
+  departmentId String
+  password     String
+  role         Role
+  createdAt    DateTime         @default(now())
+}
+
+model UserDepartment {
+  id   String @id @default(uuid())
+  name String @unique
+  users User[]
+}
+
+model EmployeeDepartment {
+  id   String @id @default(uuid())
+  name String @unique
+}
+
+model Designation {
+  id   String @id @default(uuid())
+  name String @unique
 }
 
 model RefreshToken {
-  id        String      @id @default(uuid())
-  userId    String      @unique
+  id        String   @id @default(uuid())
+  userId    String   @unique
   token     String
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -31,8 +49,8 @@ model RefreshToken {
 }
 
 model ResetToken {
-  id        String      @id @default(uuid())
-  userId    String      @unique
+  id        String   @id @default(uuid())
+  userId    String   @unique
   token     String
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -40,7 +58,7 @@ model ResetToken {
 }
 
 model Company {
-  id        String      @id @default(uuid())
+  id        String     @id @default(uuid())
   name      String
   address   String
   employees Employee[]
@@ -54,18 +72,17 @@ model Employee {
   salary            Int
   bankName          String
   bankAccountName   String
-  bankAccountNumber String      
+  bankAccountNumber String
   ifsc              String
   aadhaar           String
   companyId         String
-  company           Company     @relation(fields: [companyId], references: [id])
+  company           Company      @relation(fields: [companyId], references: [id])
   attendances       Attendance[]
   salaries          Salary[]
 }
 
-
 model Attendance {
-  id         String      @id @default(uuid())
+  id         String   @id @default(uuid())
   employeeId String
   date       DateTime
   status     Status
@@ -78,10 +95,9 @@ enum Status {
 }
 
 model Salary {
-  id         String      @id @default(uuid())
+  id         String   @id @default(uuid())
   employeeId String
   amount     Float
   date       DateTime
   employee   Employee @relation(fields: [employeeId], references: [id])
 }
-

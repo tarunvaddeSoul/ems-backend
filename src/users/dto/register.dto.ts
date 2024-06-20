@@ -37,4 +37,9 @@ export class RegisterDto {
     default: ROLE.USER,
   })
   role: ROLE = ROLE.USER;
+
+  @IsNotEmpty()
+  @IsString()
+  @ApiProperty()
+  departmentId: string;
 }

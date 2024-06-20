@@ -13,7 +13,7 @@ export class UsersRepository {
 
   async createUser(data: RegisterDto) {
     try {
-      const { name, email, password, role } = data;
+      const { name, email, password, role, departmentId } = data;
       const newUser = await this.prisma.user.create({
         data: {
           id: uuidv4(),
@@ -21,6 +21,7 @@ export class UsersRepository {
           email,
           password,
           role,
+          departmentId
         },
       });
       return newUser;

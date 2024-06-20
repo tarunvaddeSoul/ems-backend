@@ -15,12 +15,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
 import { MailService } from './mail.service';
 import { ResetPasswordDTO } from './dto/reset-password.dto';
+import { DepartmentRepository } from 'src/departments/department.repository';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly logger: Logger,
     private readonly usersRepository: UsersRepository,
+    private readonly departmentRepository: DepartmentRepository,
     private jwtService: JwtService,
     private mailService: MailService,
   ) {}
@@ -42,6 +44,10 @@ export class UsersService {
     const existingUser = await this.usersRepository.findUserByEmail(user.email);
     if (existingUser) {
       throw new ConflictException('Email already in use.');
+    }
+    const department = await this.departmentRepository.getUserDepartmentById(user.departmentId);
+    if (!department) {
+      throw new NotFoundException(`Department with ID: ${user.departmentId} not found.`);
     }
     const hashedPassword = await bcrypt.hash(user.password, 10);
     user.password = hashedPassword;
