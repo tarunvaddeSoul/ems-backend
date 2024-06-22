@@ -13,30 +13,32 @@ enum Role {
 }
 
 model User {
-  id           String           @id @default(uuid())
+  id           String         @id @default(uuid())
   name         String
-  email        String           @unique
-  department   UserDepartment   @relation(fields: [departmentId], references: [id])
+  email        String         @unique
+  department   UserDepartment @relation(fields: [departmentId], references: [id])
   departmentId String
   password     String
   role         Role
-  createdAt    DateTime         @default(now())
+  createdAt    DateTime       @default(now())
 }
 
 model UserDepartment {
-  id   String @id @default(uuid())
-  name String @unique
+  id    String @id @default(uuid())
+  name  String @unique
   users User[]
 }
 
 model EmployeeDepartment {
-  id   String @id @default(uuid())
-  name String @unique
+  id        String     @id @default(uuid())
+  name      String     @unique
+  employees Employee[]
 }
 
 model Designation {
-  id   String @id @default(uuid())
-  name String @unique
+  id        String     @id @default(uuid())
+  name      String     @unique
+  employees Employee[]
 }
 
 model RefreshToken {
@@ -64,21 +66,92 @@ model Company {
   employees Employee[]
 }
 
+enum Category {
+  SC
+  ST
+  OBC
+  GENERAL
+}
+
+enum EducationQualification {
+  UNDER_8
+  EIGHT
+  TEN
+  TWELVE
+  GRADUATE
+  POST_GRADUATE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum Title {
+  MR
+  MS
+}
+
 model Employee {
-  id                String       @id @default(uuid())
-  name              String
-  photo             String
-  address           String
-  salary            Int
-  bankName          String
-  bankAccountName   String
-  bankAccountNumber String
-  ifsc              String
-  aadhaar           String
-  companyId         String
-  company           Company      @relation(fields: [companyId], references: [id])
-  attendances       Attendance[]
-  salaries          Salary[]
+  id                            String                 @id @default(dbgenerated("concat('TSS', lpad(floor(random() * 10000)::text, 4, '0'))"))
+  title                         Title
+  firstName                     String
+  lastName                      String
+  designationId                 String
+  designation                   Designation            @relation(fields: [designationId], references: [id])
+  employeeDepartmentId          String
+  department                    EmployeeDepartment     @relation(fields: [employeeDepartmentId], references: [id])
+  mobileNumber                  String
+  companyName                   String
+  companyId                     String
+  company                       Company                @relation(fields: [companyId], references: [id])
+  recruitedBy                   String
+  gender                        Gender
+  fatherName                    String
+  motherName                    String
+  husbandName                   String?
+  category                      Category
+  dateOfBirth                   String
+  age                           Int                    @default(0)
+  dateOfJoining                 String
+  highestEducationQualification EducationQualification
+  bloodGroup                    String
+  permanentAddress              String
+  presentAddress                String
+  city                          String
+  district                      String
+  state                         String
+  pincode                       Int
+  referenceName                 String
+  referenceAddress              String
+  referenceNumber               String
+  bankAccountNumber             String
+  ifscCode                      String
+  bankCity                      String
+  bankName                      String
+  pfUanNumber                   String
+  esicNumber                    String
+  policeVerificationNumber      String
+  policeVerificationDate        String
+  trainingCertificateNumber     String
+  trainingCertificateDate       String
+  medicalCertificateNumber      String
+  medicalCertificateDate        String
+  photoUpload                   String
+  aadhaarUpload                 String
+  panCardUpload                 String
+  bankPassbook                  String
+  markSheet                     String
+  otherDocument                 String
+  salary                        Float
+  aadhaarNumber                 String
+  createdAt                     DateTime               @default(now())
+  updatedAt                     DateTime               @updatedAt
+  attendances                   Attendance[]
+  salaries                      Salary[]
+
+  @@index([aadhaarNumber], name: "idx_aadhaarNumber")
+  @@index([mobileNumber], name: "idx_mobileNumber")
 }
 
 model Attendance {

@@ -20,6 +20,7 @@ import {
   ApiConsumes,
   ApiOperation,
   ApiResponse,
+  ApiBody,
 } from '@nestjs/swagger';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
@@ -31,14 +32,17 @@ import { DeleteEmployeesDto } from './dto/delete-employees.dto';
 @ApiTags('Employees')
 export class EmployeeController {
   constructor(private readonly employeeService: EmployeeService) {}
-
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create Employee',
     description:
-      'Creates a new employee with the provided details and uploads photo and aadhaar files to S3.',
+      'Creates a new employee with the provided details and uploads photo, aadhaar, and other documents to S3.',
   })
+  // @ApiBody({
+  //   type: CreateEmployeeDto,
+  //   required: true,
+  // })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -52,21 +56,35 @@ export class EmployeeController {
     FileFieldsInterceptor([
       { name: 'photo', maxCount: 1 },
       { name: 'aadhaar', maxCount: 1 },
+      { name: 'panCardUpload', maxCount: 1 },
+      { name: 'bankPassbook', maxCount: 1 },
+      { name: 'markSheet', maxCount: 1 },
+      { name: 'otherDocument', maxCount: 1 },
     ]),
   )
   async createEmployee(
     @Body() data: CreateEmployeeDto,
     @UploadedFiles()
-    files: { photo?: Express.Multer.File[]; aadhaar?: Express.Multer.File[] },
+    files: {
+      photo?: Express.Multer.File[];
+      aadhaar?: Express.Multer.File[];
+      panCardUpload?: Express.Multer.File[];
+      bankPassbook?: Express.Multer.File[];
+      markSheet?: Express.Multer.File[];
+      otherDocument?: Express.Multer.File[];
+    },
   ) {
     return this.employeeService.createEmployee(
       data,
       files.photo ? files.photo[0] : null,
       files.aadhaar ? files.aadhaar[0] : null,
+      files.panCardUpload ? files.panCardUpload[0] : null,
+      files.bankPassbook ? files.bankPassbook[0] : null,
+      files.markSheet ? files.markSheet[0] : null,
+      files.otherDocument ? files.otherDocument[0] : null,
     );
   }
 
-  @Version('1')
   @Put(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -91,44 +109,49 @@ export class EmployeeController {
     FileFieldsInterceptor([
       { name: 'photo', maxCount: 1 },
       { name: 'aadhaar', maxCount: 1 },
+      { name: 'panCardUpload', maxCount: 1 },
+      { name: 'bankPassbook', maxCount: 1 },
+      { name: 'markSheet', maxCount: 1 },
+      { name: 'otherDocument', maxCount: 1 },
     ]),
   )
   async updateEmployee(
     @Param('id') id: string,
     @Body() data: UpdateEmployeeDto,
     @UploadedFiles()
-    files: { photo?: Express.Multer.File[]; aadhaar?: Express.Multer.File[] },
+    files: {
+      photo?: Express.Multer.File[];
+      aadhaar?: Express.Multer.File[];
+      panCardUpload?: Express.Multer.File[];
+      bankPassbook?: Express.Multer.File[];
+      markSheet?: Express.Multer.File[];
+      otherDocument?: Express.Multer.File[];
+    },
   ) {
-    const {
-      name,
-      address,
-      salary,
-      bankName,
-      bankAccountName,
-      bankAccountNumber,
-      ifsc,
-    } = data;
-    const hasFiles = files.photo?.length > 0 || files.aadhaar?.length > 0;
+    const hasFiles =
+      files.photo?.length > 0 ||
+      files.aadhaar?.length > 0 ||
+      files.panCardUpload?.length > 0 ||
+      files.bankPassbook?.length > 0 ||
+      files.markSheet?.length > 0 ||
+      files.otherDocument?.length > 0;
 
-    if (
-      !name &&
-      !address &&
-      !salary &&
-      !bankName &&
-      !bankAccountName &&
-      !bankAccountNumber &&
-      !ifsc &&
-      !hasFiles
-    ) {
-      throw new BadRequestException(
-        'At least one property must be provided for update.',
-      );
+    // Check if at least one property must be provided for update.
+    const hasUpdateData = Object.values(data).some((value) => value !== undefined && value !== null);
+
+    if (!hasUpdateData && !hasFiles) {
+      throw new BadRequestException('At least one property must be provided for update.');
     }
+
     return this.employeeService.updateEmployee(
       id,
       data,
       files.photo ? files.photo[0] : null,
       files.aadhaar ? files.aadhaar[0] : null,
+      files.panCardUpload ? files.panCardUpload[0] : null,
+      files.bankPassbook ? files.bankPassbook[0] : null,
+      files.markSheet ? files.markSheet[0] : null,
+      files.otherDocument ? files.otherDocument[0] : null,
     );
   }
 

@@ -5,6 +5,7 @@ import { EmployeeRepository } from './employee.repository';
 import { AwsS3Service } from 'src/aws/aws-s3.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
+import { CompanyRepository } from 'src/company/company.repository';
 
 @Module({
   imports: [ConfigModule.forRoot()],
@@ -15,6 +16,7 @@ import { ConfigModule } from '@nestjs/config';
     AwsS3Service,
     PrismaService,
     Logger,
+    CompanyRepository
   ],
 })
 export class EmployeeModule {}

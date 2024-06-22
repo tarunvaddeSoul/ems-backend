@@ -1,10 +1,16 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { EmployeeRepository } from './employee.repository';
 import { AwsS3Service } from '../aws/aws-s3.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { Employee } from '@prisma/client';
 import { IEmployee } from './interface/employee.interface';
+import { CompanyRepository } from 'src/company/company.repository';
 
 @Injectable()
 export class EmployeeService {
@@ -12,35 +18,102 @@ export class EmployeeService {
     private readonly employeeRepository: EmployeeRepository,
     private readonly awsS3Service: AwsS3Service,
     private readonly logger: Logger,
+    private readonly comanyRepository: CompanyRepository,
   ) {}
 
   async createEmployee(
     data: CreateEmployeeDto,
-    photo: Express.Multer.File,
-    aadhaar: Express.Multer.File,
+    photo: Express.Multer.File | null,
+    aadhaar: Express.Multer.File | null,
+    panCard: Express.Multer.File | null,
+    bankPassbook: Express.Multer.File | null,
+    markSheet: Express.Multer.File | null,
+    otherDocument: Express.Multer.File | null,
   ): Promise<Employee | any> {
     try {
-      const folder = `employees/${data.name}`;
-      const photoUrl = await this.awsS3Service.uploadFile(
-        photo,
-        `${folder}/photo`,
+      // Calculate age from dateOfBirth
+      const age = this.calculateAge(data.dateOfBirth);
+
+      // Validate age
+      if (age < 18) {
+        throw new BadRequestException(
+          'Employee must be at least 18 years old.',
+        );
+      }
+      const employeeId = this.generateEmployeeId();
+      const company = await this.comanyRepository.findById(data.companyId);
+      if (!company) {
+        throw new NotFoundException(
+          `Company with ID ${data.companyId} not found.`,
+        );
+      }
+      const folder = `employees/${data.firstName}_${data.lastName}_${employeeId}`;
+      const photoUrl = await this.uploadFile(photo, `${folder}/photo`);
+      const aadhaarUrl = await this.uploadFile(aadhaar, `${folder}/aadhaar`);
+      const panCardUrl = await this.uploadFile(panCard, `${folder}/panCard`);
+      const bankPassbookUrl = await this.uploadFile(
+        bankPassbook,
+        `${folder}/bankPassbook`,
       );
-      const aadhaarUrl = await this.awsS3Service.uploadFile(
-        aadhaar,
-        `${folder}/aadhaar`,
+      const markSheetUrl = await this.uploadFile(
+        markSheet,
+        `${folder}/markSheet`,
+      );
+      const otherDocumentUrl = await this.uploadFile(
+        otherDocument,
+        `${folder}/otherDocument`,
       );
 
       const employeeData: IEmployee = {
-        name: data.name,
-        photo: photoUrl ? photoUrl : '',
-        address: data.address,
-        aadhaar: aadhaarUrl ? aadhaarUrl : '',
+        id: employeeId,
+        title: data.title,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        designationId: data.designationId,
+        employeeDepartmentId: data.employeeDepartmentId,
+        mobileNumber: data.mobileNumber,
+        companyName: company.name,
         companyId: data.companyId,
-        bankName: data.bankName,
-        bankAccountName: data.bankAccountName,
+        recruitedBy: data.recruitedBy,
+        gender: data.gender,
+        fatherName: data.fatherName,
+        motherName: data.motherName,
+        husbandName: data.husbandName,
+        category: data.category,
+        dateOfBirth: data.dateOfBirth,
+        age: age,
+        dateOfJoining: data.dateOfJoining,
+        highestEducationQualification: data.highestEducationQualification,
+        bloodGroup: data.bloodGroup,
+        permanentAddress: data.permanentAddress,
+        presentAddress: data.presentAddress,
+        city: data.city,
+        district: data.district,
+        state: data.state,
+        pincode: data.pincode,
+        referenceName: data.referenceName,
+        referenceAddress: data.referenceAddress,
+        referenceNumber: data.referenceNumber,
         bankAccountNumber: data.bankAccountNumber,
-        ifsc: data.ifsc,
+        ifscCode: data.ifscCode,
+        bankCity: data.bankCity,
+        bankName: data.bankName,
+        pfUanNumber: data.pfUanNumber,
+        esicNumber: data.esicNumber,
+        policeVerificationNumber: data.policeVerificationNumber,
+        policeVerificationDate: data.policeVerificationDate,
+        trainingCertificateNumber: data.trainingCertificateNumber,
+        trainingCertificateDate: data.trainingCertificateDate,
+        medicalCertificateNumber: data.medicalCertificateNumber,
+        medicalCertificateDate: data.medicalCertificateDate,
+        photoUpload: photoUrl || '',
+        aadhaarUpload: aadhaarUrl || '',
+        panCardUpload: panCardUrl || '',
+        bankPassbook: bankPassbookUrl || '',
+        markSheet: markSheetUrl || '',
+        otherDocument: otherDocumentUrl || '',
         salary: data.salary,
+        aadhaarNumber: data.aadhaarNumber,
       };
 
       const employee = await this.employeeRepository.createEmployee(
@@ -50,8 +123,6 @@ export class EmployeeService {
         message: 'Employee created successfully',
         data: employee,
       };
-
-      return this.employeeRepository.createEmployee(employeeData);
     } catch (error) {
       this.logger.error(
         `Error in creating employee with error ${error.message}`,
@@ -65,6 +136,10 @@ export class EmployeeService {
     data: UpdateEmployeeDto,
     photo?: Express.Multer.File,
     aadhaar?: Express.Multer.File,
+    panCard?: Express.Multer.File,
+    bankPassbook?: Express.Multer.File,
+    markSheet?: Express.Multer.File,
+    otherDocument?: Express.Multer.File,
   ): Promise<Employee | any> {
     try {
       const existingEmployee = await this.employeeRepository.getEmployeeById(
@@ -73,8 +148,28 @@ export class EmployeeService {
       if (!existingEmployee) {
         throw new NotFoundException(`Employee with ID ${id} not found`);
       }
+      let company;
+      if (data.companyId) {
+        company = await this.comanyRepository.findById(data.companyId);
+        if (!company) {
+          throw new NotFoundException(
+            `Company with ID ${data.companyId} not found.`,
+          );
+        }
+      }
+      const employeeId = existingEmployee.id;
+      let name = '';
 
-      const name = data.name || existingEmployee.name;
+      if (data.firstName && data.lastName) {
+        name = `${data.firstName}_${data.lastName}_${employeeId}`;
+      } else if (data.firstName) {
+        name = `${data.firstName}_${existingEmployee.lastName}_${employeeId}`;
+      } else if (data.lastName) {
+        name = `${existingEmployee.firstName}_${data.lastName}_${employeeId}`;
+      } else {
+        name = `${existingEmployee.firstName}_${existingEmployee.lastName}_${employeeId}`;
+      }
+
       const folder = `employees/${name}`;
 
       const updateFile = async (
@@ -95,37 +190,121 @@ export class EmployeeService {
         return existingFileUrl;
       };
 
-      existingEmployee.photo = await updateFile(
+      existingEmployee.photoUpload = await updateFile(
         photo,
-        existingEmployee.photo,
+        existingEmployee.photoUpload,
         'photo',
       );
-      existingEmployee.aadhaar = await updateFile(
+      existingEmployee.aadhaarUpload = await updateFile(
         aadhaar,
-        existingEmployee.aadhaar,
+        existingEmployee.aadhaarUpload,
         'aadhaar',
       );
+      existingEmployee.panCardUpload = await updateFile(
+        panCard,
+        existingEmployee.panCardUpload,
+        'panCard',
+      );
+      existingEmployee.bankPassbook = await updateFile(
+        bankPassbook,
+        existingEmployee.bankPassbook,
+        'bankPassbook',
+      );
+      existingEmployee.markSheet = await updateFile(
+        markSheet,
+        existingEmployee.markSheet,
+        'markSheet',
+      );
+      existingEmployee.otherDocument = await updateFile(
+        otherDocument,
+        existingEmployee.otherDocument,
+        'otherDocument',
+      );
 
-      const fieldsToUpdate = [
-        'name',
-        'bankAccountName',
-        'bankAccountNumber',
-        'bankName',
-        'ifsc',
-        'salary',
-      ];
+      // Update other fields from DTO
+      existingEmployee.title = data.title ?? existingEmployee.title;
+      existingEmployee.firstName = data.firstName ?? existingEmployee.firstName;
+      existingEmployee.lastName = data.lastName ?? existingEmployee.lastName;
+      existingEmployee.designationId =
+        data.designationId ?? existingEmployee.designationId;
+      existingEmployee.employeeDepartmentId =
+        data.departmentId ?? existingEmployee.employeeDepartmentId;
+      existingEmployee.mobileNumber =
+        data.mobileNumber ?? existingEmployee.mobileNumber;
+      existingEmployee.companyName = company
+        ? company.name
+        : existingEmployee.companyName;
+      existingEmployee.companyId = data.companyId ?? existingEmployee.companyId;
+      existingEmployee.recruitedBy =
+        data.recruitedBy ?? existingEmployee.recruitedBy;
+      existingEmployee.gender = data.gender ?? existingEmployee.gender;
+      existingEmployee.fatherName =
+        data.fatherName ?? existingEmployee.fatherName;
+      existingEmployee.motherName =
+        data.motherName ?? existingEmployee.motherName;
+      existingEmployee.husbandName =
+        data.husbandName ?? existingEmployee.husbandName;
+      existingEmployee.category = data.category ?? existingEmployee.category;
+      existingEmployee.dateOfBirth =
+        data.dateOfBirth ?? existingEmployee.dateOfBirth;
+      existingEmployee.age = data.age ?? existingEmployee.age;
+      existingEmployee.dateOfJoining =
+        data.dateOfJoining ?? existingEmployee.dateOfJoining;
+      existingEmployee.highestEducationQualification =
+        data.highestEducationQualification ??
+        existingEmployee.highestEducationQualification;
+      existingEmployee.bloodGroup =
+        data.bloodGroup ?? existingEmployee.bloodGroup;
+      existingEmployee.permanentAddress =
+        data.permanentAddress ?? existingEmployee.permanentAddress;
+      existingEmployee.presentAddress =
+        data.presentAddress ?? existingEmployee.presentAddress;
+      existingEmployee.city = data.city ?? existingEmployee.city;
+      existingEmployee.district = data.district ?? existingEmployee.district;
+      existingEmployee.state = data.state ?? existingEmployee.state;
+      existingEmployee.pincode = data.pincode ?? existingEmployee.pincode;
+      existingEmployee.referenceName =
+        data.referenceName ?? existingEmployee.referenceName;
+      existingEmployee.referenceAddress =
+        data.referenceAddress ?? existingEmployee.referenceAddress;
+      existingEmployee.referenceNumber =
+        data.referenceNumber ?? existingEmployee.referenceNumber;
+      existingEmployee.bankAccountNumber =
+        data.bankAccountNumber ?? existingEmployee.bankAccountNumber;
+      existingEmployee.ifscCode = data.ifscCode ?? existingEmployee.ifscCode;
+      existingEmployee.bankCity = data.bankCity ?? existingEmployee.bankCity;
+      existingEmployee.bankName = data.bankName ?? existingEmployee.bankName;
+      existingEmployee.pfUanNumber =
+        data.pfUanNumber ?? existingEmployee.pfUanNumber;
+      existingEmployee.esicNumber =
+        data.esicNumber ?? existingEmployee.esicNumber;
+      existingEmployee.policeVerificationNumber =
+        data.policeVerificationNumber ??
+        existingEmployee.policeVerificationNumber;
+      existingEmployee.policeVerificationDate =
+        data.policeVerificationDate ?? existingEmployee.policeVerificationDate;
+      existingEmployee.trainingCertificateNumber =
+        data.trainingCertificateNumber ??
+        existingEmployee.trainingCertificateNumber;
+      existingEmployee.trainingCertificateDate =
+        data.trainingCertificateDate ??
+        existingEmployee.trainingCertificateDate;
+      existingEmployee.medicalCertificateNumber =
+        data.medicalCertificateNumber ??
+        existingEmployee.medicalCertificateNumber;
+      existingEmployee.medicalCertificateDate =
+        data.medicalCertificateDate ?? existingEmployee.medicalCertificateDate;
+      existingEmployee.aadhaarNumber =
+        data.aadhaarNumber ?? existingEmployee.aadhaarNumber;
 
-      fieldsToUpdate.forEach((field) => {
-        existingEmployee[field] = data[field] || existingEmployee[field];
-      });
-
-      const employee = this.employeeRepository.updateEmployee(
+      const updatedEmployee = await this.employeeRepository.updateEmployee(
         id,
         existingEmployee,
       );
+
       return {
         message: 'Employee updated successfully',
-        data: employee,
+        data: updatedEmployee,
       };
     } catch (error) {
       this.logger.error(
@@ -163,7 +342,9 @@ export class EmployeeService {
     }
   }
 
-  async deleteEmployeeById(id: string) {
+  async deleteEmployeeById(
+    id: string,
+  ): Promise<{ message: string; data: any }> {
     try {
       const employeeResponse = await this.employeeRepository.getEmployeeById(
         id,
@@ -171,14 +352,21 @@ export class EmployeeService {
       if (!employeeResponse) {
         throw new NotFoundException(`Employee with ID: ${id} not found.`);
       }
-      const photoKey = this.extractKeyFromUrl(employeeResponse.photo);
-      const aadhaarKey = this.extractKeyFromUrl(employeeResponse.aadhaar);
-      if (photoKey) {
-        await this.awsS3Service.deleteFile(photoKey);
-      }
-      if (aadhaarKey) {
-        await this.awsS3Service.deleteFile(aadhaarKey);
-      }
+
+      const deleteFile = async (fileUrl: string) => {
+        const key = this.extractKeyFromUrl(fileUrl);
+        if (key) {
+          await this.awsS3Service.deleteFile(key);
+        }
+      };
+
+      await deleteFile(employeeResponse.photoUpload);
+      await deleteFile(employeeResponse.aadhaarUpload);
+      await deleteFile(employeeResponse.panCardUpload);
+      await deleteFile(employeeResponse.bankPassbook);
+      await deleteFile(employeeResponse.markSheet);
+      await deleteFile(employeeResponse.otherDocument);
+
       const deleteEmployeeResponse =
         await this.employeeRepository.deleteEmployeeById(id);
       return {
@@ -200,19 +388,26 @@ export class EmployeeService {
         if (!employee) {
           throw new NotFoundException(`Employee with ID ${id} not found`);
         }
-        const photoKey = this.extractKeyFromUrl(employee.photo);
-        const aadhaarKey = this.extractKeyFromUrl(employee.aadhaar);
-        if (photoKey) {
-          await this.awsS3Service.deleteFile(photoKey);
-        }
-        if (aadhaarKey) {
-          await this.awsS3Service.deleteFile(aadhaarKey);
-        }
+
+        const deleteFile = async (fileUrl: string) => {
+          const key = this.extractKeyFromUrl(fileUrl);
+          if (key) {
+            await this.awsS3Service.deleteFile(key);
+          }
+        };
+
+        await deleteFile(employee.photoUpload);
+        await deleteFile(employee.aadhaarUpload);
+        await deleteFile(employee.panCardUpload);
+        await deleteFile(employee.bankPassbook);
+        await deleteFile(employee.markSheet);
+        await deleteFile(employee.otherDocument);
+
         await this.employeeRepository.deleteEmployeeById(id);
       }
       return { message: 'Employees deleted successfully' };
     } catch (error) {
-      this.logger.error(`Error deleting employees`);
+      this.logger.error(`Error deleting employees: ${error.message}`);
       throw error;
     }
   }
@@ -230,5 +425,42 @@ export class EmployeeService {
       );
       throw error;
     }
+  }
+
+  private async uploadFile(
+    file: Express.Multer.File,
+    folderPath: string,
+  ): Promise<string | null> {
+    if (file) {
+      return await this.awsS3Service.uploadFile(file, folderPath);
+    }
+    return null;
+  }
+
+  private calculateAge(dateOfBirth: string): number {
+    const parts = dateOfBirth.split('-');
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Months are zero-indexed in JavaScript dates
+    const year = parseInt(parts[2], 10);
+
+    const birthDate = new Date(year, month, day);
+    const today = new Date(); // This gets the current date and time
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+
+    return age;
+  }
+
+  private generateEmployeeId(): string {
+    const random4DigitNumber = Math.floor(1000 + Math.random() * 9000).toString();
+    return `TSS${random4DigitNumber}`;
   }
 }
