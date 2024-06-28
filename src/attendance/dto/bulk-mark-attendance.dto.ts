@@ -1,31 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsNotEmpty,
-  IsDateString,
-  IsEnum,
-  IsUUID,
-  Matches,
+  IsArray,
+  ValidateNested,
+  ArrayMinSize,
 } from 'class-validator';
-
-enum Status {
-  PRESENT = 'PRESENT',
-  ABSENT = 'ABSENT',
-}
+import { MarkAttendanceDto } from './mark-attendance.dto';
 
 export class BulkMarkAttendanceDto {
-  @IsNotEmpty({ each: true })
-  @IsUUID('4', { each: true })
-  @ApiProperty({ type: [String], required: true })
-  employeeIds: string[];
-
-  @IsNotEmpty()
-  @ApiProperty({ type: 'string', required: true })
-  @IsDateString()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/)
-  date: string;
-
-  @ApiProperty({ type: 'string', required: true })
-  @IsNotEmpty()
-  @IsEnum(Status)
-  status: Status; // 'PRESENT' or 'ABSENT'
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => MarkAttendanceDto)
+  @ApiProperty({
+    type: [MarkAttendanceDto],
+    description: 'Array of attendance records',
+    required: true,
+  })
+  records: MarkAttendanceDto[];
 }

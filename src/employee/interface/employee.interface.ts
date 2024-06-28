@@ -5,8 +5,10 @@ export interface IEmployee {
   title?: Title;
   firstName?: string;
   lastName?: string;
+  designationName?: string;
   designationId?: string;
   employeeDepartmentId?: string;
+  employeeDepartmentName?: string;
   mobileNumber?: string;
   companyName?: string;
   companyId?: string;

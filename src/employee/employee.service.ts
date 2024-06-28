@@ -11,6 +11,8 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { Employee } from '@prisma/client';
 import { IEmployee } from './interface/employee.interface';
 import { CompanyRepository } from 'src/company/company.repository';
+import { DesignationRepository } from 'src/designations/designation.repository';
+import { DepartmentRepository } from 'src/departments/department.repository';
 
 @Injectable()
 export class EmployeeService {
@@ -19,6 +21,8 @@ export class EmployeeService {
     private readonly awsS3Service: AwsS3Service,
     private readonly logger: Logger,
     private readonly comanyRepository: CompanyRepository,
+    private readonly designationRepository: DesignationRepository,
+    private readonly departmentRepository: DepartmentRepository,
   ) {}
 
   async createEmployee(
@@ -47,7 +51,18 @@ export class EmployeeService {
           `Company with ID ${data.companyId} not found.`,
         );
       }
-      const folder = `employees/${data.firstName}_${data.lastName}_${employeeId}`;
+
+      const designation = await this.designationRepository.getById(data.designationId);
+      if (!designation) {
+        throw new NotFoundException(`Designation with ID: ${data.designationId} not found.`);
+      }
+
+      const employeeDepartment = await this.departmentRepository.getEmployeeDepartmentById(data.employeeDepartmentId);
+      if (!employeeDepartment) {
+        throw new NotFoundException(`Employee Department with ID: ${data.employeeDepartmentId} not found.`);
+      }
+
+      const folder = `employees/${employeeId}`;
       const photoUrl = await this.uploadFile(photo, `${folder}/photo`);
       const aadhaarUrl = await this.uploadFile(aadhaar, `${folder}/aadhaar`);
       const panCardUrl = await this.uploadFile(panCard, `${folder}/panCard`);
@@ -70,7 +85,9 @@ export class EmployeeService {
         firstName: data.firstName,
         lastName: data.lastName,
         designationId: data.designationId,
+        designationName: designation.name,
         employeeDepartmentId: data.employeeDepartmentId,
+        employeeDepartmentName: employeeDepartment.name,
         mobileNumber: data.mobileNumber,
         companyName: company.name,
         companyId: data.companyId,
@@ -170,7 +187,7 @@ export class EmployeeService {
         name = `${existingEmployee.firstName}_${existingEmployee.lastName}_${employeeId}`;
       }
 
-      const folder = `employees/${name}`;
+      const folder = `employees/${id}`;
 
       const updateFile = async (
         file: Express.Multer.File,
@@ -416,7 +433,7 @@ export class EmployeeService {
     try {
       const employees = await this.employeeRepository.getAllEmployees();
       return {
-        message: 'Employee created successfully',
+        message: 'Employee fetched successfully',
         data: employees,
       };
     } catch (error) {

@@ -60,10 +60,12 @@ model ResetToken {
 }
 
 model Company {
-  id        String     @id @default(uuid())
-  name      String
-  address   String
-  employees Employee[]
+  id          String       @id @default(uuid())
+  name        String
+  address     String
+  employees   Employee[]
+  attendances Attendance[]
+  Salary      Salary[]
 }
 
 enum Category {
@@ -98,8 +100,10 @@ model Employee {
   firstName                     String
   lastName                      String
   designationId                 String
+  designationName               String
   designation                   Designation            @relation(fields: [designationId], references: [id])
   employeeDepartmentId          String
+  employeeDepartmentName        String
   department                    EmployeeDepartment     @relation(fields: [employeeDepartmentId], references: [id])
   mobileNumber                  String
   companyName                   String
@@ -155,12 +159,18 @@ model Employee {
 }
 
 model Attendance {
-  id         String   @id @default(uuid())
-  employeeId String
-  date       DateTime
-  status     Status
-  employee   Employee @relation(fields: [employeeId], references: [id])
+  id           String   @id @default(uuid())
+  employeeId   String
+  month        String
+  presentCount Int
+  companyId    String?
+
+  employee     Employee @relation(fields: [employeeId], references: [id])
+  company      Company? @relation(fields: [companyId], references: [id])
+
+  @@unique([employeeId, companyId, month])
 }
+
 
 enum Status {
   PRESENT
@@ -170,7 +180,9 @@ enum Status {
 model Salary {
   id         String   @id @default(uuid())
   employeeId String
+  companyId  String
   amount     Float
   date       DateTime
   employee   Employee @relation(fields: [employeeId], references: [id])
+  company    Company  @relation(fields: [companyId], references: [id])
 }

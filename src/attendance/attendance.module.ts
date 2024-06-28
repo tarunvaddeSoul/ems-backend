@@ -4,6 +4,7 @@ import { AttendanceController } from './attendance.controller';
 import { AttendanceRepository } from './attendance.repository';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EmployeeRepository } from 'src/employee/employee.repository';
+import { CompanyRepository } from 'src/company/company.repository';
 
 @Module({
   controllers: [AttendanceController],
@@ -13,6 +14,7 @@ import { EmployeeRepository } from 'src/employee/employee.repository';
     PrismaService,
     Logger,
     EmployeeRepository,
+    CompanyRepository
   ],
 })
 export class AttendanceModule {}
