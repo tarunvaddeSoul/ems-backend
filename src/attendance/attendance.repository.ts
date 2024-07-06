@@ -5,6 +5,7 @@ import { GetAttendanceDto } from './dto/get-attendance.dto';
 import { Attendance } from '@prisma/client';
 import { Status } from './enum/attendance-status.enum';
 import { BulkMarkAttendanceDto } from './dto/bulk-mark-attendance.dto';
+import { UploadAttendanceSheetDto } from './dto/upload-attendance-sheet.dto';
 
 @Injectable()
 export class AttendanceRepository {
@@ -12,6 +13,7 @@ export class AttendanceRepository {
 
   async markAttendance(
     markAttendanceDto: MarkAttendanceDto,
+    // attendanceSheetUrl: string
   ): Promise<Attendance> {
     try {
       const { employeeId, month, presentCount, companyId } = markAttendanceDto;
@@ -25,15 +27,17 @@ export class AttendanceRepository {
         },
         update: {
           presentCount,
+          // attendanceSheetUrl,
         },
         create: {
           employeeId,
           month,
           presentCount,
           companyId,
+          // attendanceSheetUrl,
         },
       });
-  
+
       return attendanceRecord;
     } catch (error) {
       return error;
@@ -51,30 +55,59 @@ export class AttendanceRepository {
     }
   }
 
-  async markBulkAttendance(
-    bulkMarkAttendanceDto: BulkMarkAttendanceDto,
-  ): Promise<Attendance[]> {
-    const attendanceRecords = [];
-
-    for (const markAttendanceDto of bulkMarkAttendanceDto.records) {
-      try {
-        const { employeeId, month, presentCount } = markAttendanceDto;
-        const attendanceRecord = await this.prisma.attendance.create({
-          data: {
-            employeeId,
+  async saveAttendanceSheet(
+    uploadAttendanceSheetDto: UploadAttendanceSheetDto,
+    attendanceSheetUrl: string,
+  ) {
+    try {
+      const { companyId, month } = uploadAttendanceSheetDto;
+      const saveAttendanceSheetResponse =
+        await this.prisma.attendanceSheet.upsert({
+          where: {
+            companyId_month: {
+              companyId,
+              month,
+            },
+          },
+          update: {
+            attendanceSheetUrl,
+          },
+          create: {
+            companyId,
             month,
-            presentCount,
+            attendanceSheetUrl,
           },
         });
-        attendanceRecords.push(attendanceRecord);
-      } catch (error) {
-        // Handle specific errors or log them as needed
-        // Continue processing other records
-      }
+      return saveAttendanceSheetResponse;
+    } catch (error) {
+      return error;
     }
-
-    return attendanceRecords;
   }
+
+  // async markBulkAttendance(
+  //   bulkMarkAttendanceDto: BulkMarkAttendanceDto,
+  // ): Promise<Attendance[]> {
+  //   const attendanceRecords = [];
+
+  //   for (const markAttendanceDto of bulkMarkAttendanceDto.records) {
+  //     try {
+  //       const { employeeId, month, presentCount } = markAttendanceDto;
+  //       const attendanceRecord = await this.prisma.attendance.create({
+  //         data: {
+  //           employeeId,
+  //           month,
+  //           presentCount,
+  //         },
+  //       });
+  //       attendanceRecords.push(attendanceRecord);
+  //     } catch (error) {
+  //       // Handle specific errors or log them as needed
+  //       // Continue processing other records
+  //     }
+  //   }
+
+  //   return attendanceRecords;
+  // }
 
   async getAttendanceRecordsByIds(ids: string[]) {
     try {
@@ -89,10 +122,23 @@ export class AttendanceRepository {
 
   async getAttendanceRecordsByCompanyId(companyId: string) {
     try {
-      const attendanceRecords = await this.prisma.attendance.findMany({ where: { companyId } });
+      const attendanceRecords = await this.prisma.attendance.findMany({
+        where: { companyId },
+      });
       return attendanceRecords;
     } catch (error) {
-      return error;   
+      return error;
+    }
+  }
+
+  async getAttendanceRecordsByEmployeeId(employeeId: string) {
+    try {
+      const attendanceRecords = await this.prisma.attendance.findMany({
+        where: { employeeId },
+      });
+      return attendanceRecords;
+    } catch (error) {
+      return error;
     }
   }
 
@@ -127,7 +173,7 @@ export class AttendanceRepository {
     }
   }
 
-    // async getTotalAttendance(
+  // async getTotalAttendance(
   //   getAttendanceDto: GetAttendanceDto,
   // ): Promise<{ presentCount: number; absentCount: number }> {
   //   try {

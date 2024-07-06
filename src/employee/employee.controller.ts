@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Delete,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { EmployeeService } from './employee.service';
@@ -26,6 +27,7 @@ import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { DeleteEmployeesDto } from './dto/delete-employees.dto';
+import { GetAllEmployeesDto } from './dto/get-all-employees.dto';
 
 @Controller('employees')
 @UseInterceptors(TransformInterceptor)
@@ -39,10 +41,6 @@ export class EmployeeController {
     description:
       'Creates a new employee with the provided details and uploads photo, aadhaar, and other documents to S3.',
   })
-  // @ApiBody({
-  //   type: CreateEmployeeDto,
-  //   required: true,
-  // })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -208,13 +206,13 @@ export class EmployeeController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get All Employees',
-    description: 'Retrieves a list of all employees.',
+    description: 'Retrieves a list of employees with pagination, filtering, and sorting.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Employees retrieved successfully.',
   })
-  async getAllEmployees() {
-    return this.employeeService.getAllEmployees();
+  async getAllEmployees(@Query() queryParams: GetAllEmployeesDto) {
+    return this.employeeService.getAllEmployees(queryParams);
   }
 }

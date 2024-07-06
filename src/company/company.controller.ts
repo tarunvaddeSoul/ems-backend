@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   Version,
+  Query,
 } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
@@ -17,6 +18,7 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { DeleteCompaniesDto } from './dto/delete-companies.dto';
+import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
 
 @Controller('companies')
 @UseInterceptors(TransformInterceptor)
@@ -59,10 +61,14 @@ export class CompanyController {
 
   @HttpCode(HttpStatus.OK)
   @Get()
-  @ApiOperation({ summary: 'Get all companies' })
+  @ApiOperation({
+    summary: 'Get all companies',
+    description:
+      'Retrieves a list of companies with pagination, filtering, and sorting.',
+  })
   @ApiResponse({ status: 200, description: 'The list of companies.' })
-  async getAllCompanies() {
-    return this.companyService.getAllCompanies();
+  async getAllCompanies(@Query() queryParams: GetAllCompaniesDto) {
+    return this.companyService.getAllCompanies(queryParams);
   }
 
   @Delete(':id')

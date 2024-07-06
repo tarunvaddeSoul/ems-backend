@@ -53,4 +53,7 @@ export class MarkAttendanceDto {
   @Type(() => Number)
   @IsNotEmpty()
   presentCount: number;
+
+  // @ApiProperty({ type: 'string', format: 'binary', required: false })
+  // attendanceSheet?: Express.Multer.File;
 }

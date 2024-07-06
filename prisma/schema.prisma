@@ -59,14 +59,55 @@ model ResetToken {
   updatedAt DateTime @updatedAt
 }
 
+enum PresentDaysCount {
+  D26
+  D27
+  D28
+  D29
+  D30
+  D31
+}
+
+enum PFOptions {
+  TWELVE_PERCENT
+  NO
+}
+
+enum ESICOptions {
+  ZERO_POINT_SEVEN_FIVE_PERCENT
+  NO
+}
+
+enum BONUSOptions {
+  EIGHT_POINT_THREE_THREE_PERCENT
+  NO
+}
+
+enum LWFOptions {
+  TEN_RUPEES
+  NO
+}
+
 model Company {
-  id          String       @id @default(uuid())
-  name        String
-  address     String
+  id                   String      @id @default(uuid())
+  name                 String
+  address              String
+  contactPersonName    String
+  contactPersonNumber  String
+  createdAt            DateTime    @default(now())
+  presentDaysCount     String
+  PF                   String
+  ESIC                 String
+  BONUS                String
+  LWF                  String
+  otherAllowance       Int
+  otherAllowanceRemark String?
+
   employees   Employee[]
   attendances Attendance[]
   Salary      Salary[]
 }
+
 
 enum Category {
   SC
@@ -164,13 +205,21 @@ model Attendance {
   month        String
   presentCount Int
   companyId    String?
-
+  // attendanceSheetUrl String
   employee     Employee @relation(fields: [employeeId], references: [id])
   company      Company? @relation(fields: [companyId], references: [id])
 
   @@unique([employeeId, companyId, month])
 }
 
+model AttendanceSheet {
+  id                 String @id @default(uuid())
+  companyId          String
+  month              String
+  attendanceSheetUrl String
+
+  @@unique([companyId, month])
+}
 
 enum Status {
   PRESENT

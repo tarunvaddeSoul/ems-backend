@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Employee } from '@prisma/client';
 import { IEmployee } from './interface/employee.interface';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
+import { GetAllEmployeesDto } from './dto/get-all-employees.dto';
 
 @Injectable()
 export class EmployeeRepository {
@@ -106,14 +107,79 @@ export class EmployeeRepository {
     }
   }
 
-  async getAllEmployees(): Promise<Employee[]> {
+  async getAllEmployees(params: GetAllEmployeesDto) {
     try {
-      const employeesResponse = await this.prisma.employee.findMany();
-      return employeesResponse;
+      const {
+        page,
+        limit,
+        searchText,
+        designationId,
+        employeeDepartmentId,
+        companyId,
+        gender,
+        category,
+        highestEducationQualification,
+        minAge,
+        maxAge,
+        sortBy,
+        sortOrder,
+        startDate,
+        endDate,
+      } = params;
+  
+      const where: any = {};
+      if (searchText) {
+        where.OR = [
+          { firstName: { contains: searchText, mode: 'insensitive' } },
+          { lastName: { contains: searchText, mode: 'insensitive' } },
+          { id: { contains: searchText, mode: 'insensitive' } },
+        ];
+      }
+      if (designationId) where.designationId = designationId;
+      if (employeeDepartmentId) where.employeeDepartmentId = employeeDepartmentId;
+      if (companyId) where.companyId = companyId;
+      if (gender) where.gender = gender;
+      if (category) where.category = category;
+      if (highestEducationQualification) where.highestEducationQualification = highestEducationQualification;
+      if (minAge || maxAge) {
+        where.age = {};
+        if (minAge) where.age.gte = minAge;
+        if (maxAge) where.age.lte = maxAge;
+      }
+      if (startDate || endDate) {
+        where.dateOfJoining = {};
+        if (startDate) where.dateOfJoining.gte = startDate;
+        if (endDate) where.dateOfJoining.lte = endDate;
+      }
+  
+      const orderBy: any = {};
+      if (sortBy) {
+        orderBy[sortBy] = sortOrder || 'asc';
+      }
+  
+      const [data, total] = await Promise.all([
+        this.prisma.employee.findMany({
+          where,
+          orderBy,
+          skip: (page - 1) * limit,
+          take: limit,
+          include: {
+            designation: true,
+            department: true,
+            company: true,
+          },
+        }),
+        this.prisma.employee.count({ where }),
+      ]);
+  
+      return { data, total };
     } catch (error) {
+      console.error(error);
       return error;
     }
   }
+  
+  
 
   async deleteEmployeeById(id: string) {
     try {

@@ -86,7 +86,7 @@ export class CreateEmployeeDto {
   @ApiProperty({ type: 'string' })
   @IsNotEmpty()
   @IsString()
-  @Transform(({ value }) => value.toUpperCase())
+  @IsDateFormat({ message: 'dateOfJoining must be in the format DD-MM-YYYY' })
   dateOfJoining: string;
 
   @ApiProperty({ enum: EducationQualification })
@@ -201,7 +201,6 @@ export class CreateEmployeeDto {
   @IsNotEmpty()
   @IsString()
   @IsDateFormat({ message: 'policeVerificationDate must be in the format DD-MM-YYYY' })
-
   policeVerificationDate: string;
 
   @ApiProperty({ type: 'string' })

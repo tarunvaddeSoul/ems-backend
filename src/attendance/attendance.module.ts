@@ -5,8 +5,11 @@ import { AttendanceRepository } from './attendance.repository';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EmployeeRepository } from 'src/employee/employee.repository';
 import { CompanyRepository } from 'src/company/company.repository';
+import { AwsS3Service } from 'src/aws/aws-s3.service';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
+  imports: [ConfigModule.forRoot()],
   controllers: [AttendanceController],
   providers: [
     AttendanceService,
@@ -14,7 +17,8 @@ import { CompanyRepository } from 'src/company/company.repository';
     PrismaService,
     Logger,
     EmployeeRepository,
-    CompanyRepository
+    CompanyRepository,
+    AwsS3Service,
   ],
 })
 export class AttendanceModule {}

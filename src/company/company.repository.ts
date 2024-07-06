@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import { Company } from '@prisma/client';
+import { Company, Prisma } from '@prisma/client';
+import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
 
 @Injectable()
 export class CompanyRepository {
@@ -10,7 +11,34 @@ export class CompanyRepository {
 
   async create(data: CreateCompanyDto): Promise<Company> {
     try {
-      const company = await this.prisma.company.create({ data });
+      const {
+        name,
+        address,
+        contactPersonName,
+        contactPersonNumber,
+        presentDaysCount,
+        ESIC,
+        PF,
+        BONUS,
+        LWF,
+        otherAllowance,
+        otherAllowanceRemark,
+      } = data;
+      const company = await this.prisma.company.create({
+        data: {
+          name,
+          address,
+          contactPersonName,
+          contactPersonNumber,
+          presentDaysCount,
+          ESIC,
+          PF,
+          BONUS,
+          LWF,
+          otherAllowance,
+          otherAllowanceRemark,
+        },
+      });
       return company;
     } catch (error) {
       return error;
@@ -47,12 +75,61 @@ export class CompanyRepository {
     }
   }
 
-  async findAll(): Promise<Company[]> {
+  async findAll(query: GetAllCompaniesDto): Promise<{
+    companies: Company[];
+    total: number;
+  }> {
     try {
-      const companies = await this.prisma.company.findMany();
-      return companies;
+      const { page, limit, sortBy, sortOrder, searchText } = query;
+      const skip = (page - 1) * limit;
+
+      const where: Prisma.CompanyWhereInput = searchText
+        ? {
+            OR: [
+              { name: { contains: searchText, mode: 'insensitive' } },
+              { address: { contains: searchText, mode: 'insensitive' } },
+              {
+                contactPersonName: {
+                  contains: searchText,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                contactPersonNumber: {
+                  contains: searchText,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                presentDaysCount: { contains: searchText, mode: 'insensitive' },
+              },
+              { ESIC: { contains: searchText, mode: 'insensitive' } },
+              { PF: { contains: searchText, mode: 'insensitive' } },
+              { BONUS: { contains: searchText, mode: 'insensitive' } },
+              { LWF: { contains: searchText, mode: 'insensitive' } },
+              {
+                otherAllowanceRemark: {
+                  contains: searchText,
+                  mode: 'insensitive',
+                },
+              },
+            ],
+          }
+        : {};
+
+      const companies = await this.prisma.company.findMany({
+        skip,
+        take: limit,
+        where,
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+      });
+
+      const total = await this.prisma.company.count({ where });
+      return { companies, total };
     } catch (error) {
-      return error;
+      throw error;
     }
   }
 

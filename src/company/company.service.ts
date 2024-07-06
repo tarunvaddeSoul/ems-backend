@@ -8,6 +8,7 @@ import {
 import { CompanyRepository } from './company.repository';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
 
 @Injectable()
 export class CompanyService {
@@ -73,10 +74,10 @@ export class CompanyService {
     }
   }
 
-  async getAllCompanies() {
+  async getAllCompanies(queryParams: GetAllCompaniesDto) {
     try {
-      const companiesResponse = await this.companyRepository.findAll();
-      if (companiesResponse.length === 0) {
+      const companiesResponse = await this.companyRepository.findAll(queryParams);
+      if (companiesResponse.companies.length === 0) {
         throw new NotFoundException(`No companies found`);
       }
       return {

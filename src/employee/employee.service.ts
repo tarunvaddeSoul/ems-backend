@@ -13,6 +13,7 @@ import { IEmployee } from './interface/employee.interface';
 import { CompanyRepository } from 'src/company/company.repository';
 import { DesignationRepository } from 'src/designations/designation.repository';
 import { DepartmentRepository } from 'src/departments/department.repository';
+import { GetAllEmployeesDto } from './dto/get-all-employees.dto';
 
 @Injectable()
 export class EmployeeService {
@@ -39,11 +40,11 @@ export class EmployeeService {
       const age = this.calculateAge(data.dateOfBirth);
 
       // Validate age
-      if (age < 18) {
-        throw new BadRequestException(
-          'Employee must be at least 18 years old.',
-        );
-      }
+      // if (age < 18) {
+      //   throw new BadRequestException(
+      //     'Employee must be at least 18 years old.',
+      //   );
+      // }
       const employeeId = this.generateEmployeeId();
       const company = await this.comanyRepository.findById(data.companyId);
       if (!company) {
@@ -429,9 +430,9 @@ export class EmployeeService {
     }
   }
 
-  async getAllEmployees(): Promise<Employee[] | any> {
+  async getAllEmployees(queryParams: GetAllEmployeesDto): Promise<Employee[] | any> {
     try {
-      const employees = await this.employeeRepository.getAllEmployees();
+    const employees = await this.employeeRepository.getAllEmployees(queryParams);
       return {
         message: 'Employee fetched successfully',
         data: employees,
