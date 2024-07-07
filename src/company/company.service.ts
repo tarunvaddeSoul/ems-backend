@@ -76,7 +76,9 @@ export class CompanyService {
 
   async getAllCompanies(queryParams: GetAllCompaniesDto) {
     try {
-      const companiesResponse = await this.companyRepository.findAll(queryParams);
+      const companiesResponse = await this.companyRepository.findAll(
+        queryParams,
+      );
       if (companiesResponse.companies.length === 0) {
         throw new NotFoundException(`No companies found`);
       }
@@ -122,6 +124,20 @@ export class CompanyService {
         await this.companyRepository.deleteCompany(id);
       }
       return { message: 'Companies deleted successfully' };
+    } catch (error) {
+      this.logger.error(`Error deleting companies`);
+      throw error;
+    }
+  }
+
+  async getCompanyWithEmployeeCount() {
+    try {
+      const companyData =
+        await this.companyRepository.getCompanyWithEmployeeCount();
+      return {
+        message: 'Company data fetched successfully',
+        data: companyData,
+      };
     } catch (error) {
       this.logger.error(`Error deleting companies`);
       throw error;

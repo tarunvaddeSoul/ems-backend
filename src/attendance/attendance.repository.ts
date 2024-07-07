@@ -1,10 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto';
-import { GetAttendanceDto } from './dto/get-attendance.dto';
 import { Attendance } from '@prisma/client';
-import { Status } from './enum/attendance-status.enum';
-import { BulkMarkAttendanceDto } from './dto/bulk-mark-attendance.dto';
 import { UploadAttendanceSheetDto } from './dto/upload-attendance-sheet.dto';
 
 @Injectable()
@@ -173,42 +170,39 @@ export class AttendanceRepository {
     }
   }
 
-  // async getTotalAttendance(
-  //   getAttendanceDto: GetAttendanceDto,
-  // ): Promise<{ presentCount: number; absentCount: number }> {
-  //   try {
-  //     const { employeeId, month } = getAttendanceDto;
-  //     const [year, monthIndex] = month.split('-').map(Number);
-
-  //     const startDate = new Date(year, monthIndex - 1, 1);
-  //     const endDate = new Date(year, monthIndex, 0);
-  //     // Count present days
-  //     const presentCount = await this.prisma.attendance.count({
-  //       where: {
-  //         employeeId,
-  //         date: {
-  //           gte: startDate,
-  //           lte: endDate,
-  //         },
-  //         status: 'PRESENT',
-  //       },
-  //     });
-
-  //     // Count absent days
-  //     const absentCount = await this.prisma.attendance.count({
-  //       where: {
-  //         employeeId,
-  //         date: {
-  //           gte: startDate,
-  //           lte: endDate,
-  //         },
-  //         status: 'ABSENT',
-  //       },
-  //     });
-
-  //     return { presentCount, absentCount };
-  //   } catch (error) {
-  //     return error;
-  //   }
-  // }
+  async getAllAttendanceRecordsByCompanyIdAndMonth(companyId: string, month: string): Promise<any[]> {
+    try {
+      const attendanceRecords = await this.prisma.attendance.findMany({
+        where: {
+          companyId: companyId,
+          month: month,
+        },
+        include: {
+          employee: {
+            select: {
+              id: true,
+              designationName: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          company: {
+            select: {
+              name: true, // Select company name if needed
+            },
+          },
+        },
+      });
+  
+      return attendanceRecords.map(record => ({
+        employeeID: record.employee.id,
+        employeeName: `${record.employee.firstName} ${record.employee.lastName}`,
+        companyName: record.company?.name || 'Unknown Company',
+        designationName: record.employee.designationName,
+        presentCount: record.presentCount,
+      }));
+    } catch (error) {
+      throw error;
+    }
+  }
 }

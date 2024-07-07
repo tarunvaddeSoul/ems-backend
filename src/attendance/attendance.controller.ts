@@ -19,6 +19,7 @@ import { BulkMarkAttendanceDto } from './dto/bulk-mark-attendance.dto';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadAttendanceSheetDto } from './dto/upload-attendance-sheet.dto';
+import { GetAttendanceByCompanyAndMonthDto } from './dto/get-attendance.dto';
 
 @ApiTags('Attendance')
 @UseInterceptors(TransformInterceptor)
@@ -68,6 +69,18 @@ export class AttendanceController {
   }
 
 
+  @HttpCode(HttpStatus.OK)
+  @Get('records-by-company-and-month')
+  @ApiOperation({ summary: 'Get total attendance for a company by month' })
+  @ApiResponse({
+    status: 200,
+    description: 'Total attendance retrieved successfully.',
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  async getAllAttendanceRecordsByCompanyIdAndMonth(@Query() queryParams: GetAttendanceByCompanyAndMonthDto) {
+    const { companyId, month } = queryParams;
+    return this.attendanceService.getAllAttendanceRecordsByCompanyIdAndMonth(companyId, month);
+  }
 
   @Get(':companyId')
   @HttpCode(HttpStatus.OK)
@@ -99,21 +112,6 @@ export class AttendanceController {
   async getAll() {
     return await this.attendanceService.getAll();
   }
-
-  // @HttpCode(HttpStatus.OK)
-  // @Get('total')
-  // @ApiOperation({ summary: 'Get total attendance for an employee by month' })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Total attendance retrieved successfully.',
-  // })
-  // @ApiResponse({ status: 400, description: 'Bad Request.' })
-  // async getTotalAttendance(@Query() getAttendanceDto: GetAttendanceDto) {
-  //   const totalAttendance = await this.attendanceService.getTotalAttendance(
-  //     getAttendanceDto,
-  //   );
-  //   return totalAttendance;
-  // }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)

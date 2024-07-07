@@ -205,7 +205,6 @@ model Attendance {
   month        String
   presentCount Int
   companyId    String?
-  // attendanceSheetUrl String
   employee     Employee @relation(fields: [employeeId], references: [id])
   company      Company? @relation(fields: [companyId], references: [id])
 

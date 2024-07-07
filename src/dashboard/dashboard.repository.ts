@@ -14,17 +14,29 @@ export class DashboardRepository {
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    const formattedFirstDay = firstDayOfMonth.toISOString().split('T')[0];
-    const formattedLastDay = lastDayOfMonth.toISOString().split('T')[0];
+    const formattedFirstDay = this.formatDateToComparableString(firstDayOfMonth);
+    const formattedLastDay = this.formatDateToComparableString(lastDayOfMonth);
 
-    return this.prisma.employee.count({
-      where: {
-        dateOfJoining: {
-          gte: formattedFirstDay,
-          lte: formattedLastDay,
-        },
-      },
+    const employeesInDateRange = await this.prisma.employee.findMany();
+    
+    const filteredEmployees = employeesInDateRange.filter(employee => {
+      const employeeDate = this.formatDateToComparableString(this.parseDate(employee.dateOfJoining));
+      return employeeDate >= formattedFirstDay && employeeDate <= formattedLastDay;
     });
+
+    return filteredEmployees.length;
+  }
+
+  private formatDateToComparableString(date: Date): string {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${year}-${month}-${day}`;
+  }
+
+  private parseDate(dateString: string): Date {
+    const [day, month, year] = dateString.split('-').map(part => parseInt(part, 10));
+    return new Date(year, month - 1, day);
   }
 
   async getTotalCompanies(): Promise<number> {

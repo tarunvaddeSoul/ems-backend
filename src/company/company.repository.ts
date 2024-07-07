@@ -143,4 +143,34 @@ export class CompanyRepository {
       return error;
     }
   }
+
+  async getCompanyWithEmployeeCount(): Promise<{ name: string; employeeCount: number }[]> {
+    try {
+      const companies = await this.prisma.company.findMany({
+        include: {
+          _count: {
+            select: { employees: true },
+          },
+        },
+      });
+  
+      // Sort companies by employeeCount in descending order
+      companies.sort((a, b) => {
+        if (a._count?.employees && b._count?.employees) {
+          return b._count.employees - a._count.employees; // Descending order
+        } else {
+          // Handle cases where _count.employees might be null or undefined
+          return 0; // Maintain current order
+        }
+      });
+  
+      return companies.map(company => ({
+        name: company.name,
+        employeeCount: company._count?.employees || 0, // Access safely and handle potential null
+      }));
+    } catch (error) {
+      throw error;
+    }
+  }
+  
 }

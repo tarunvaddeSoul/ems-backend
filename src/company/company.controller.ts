@@ -38,6 +38,16 @@ export class CompanyController {
     return this.companyService.createCompany(data);
   }
 
+  @Get('employee-count')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get employees count',
+    description: 'Get employees count by company',
+  })
+  async getCompanyWithEmployeeCount() {
+    return await this.companyService.getCompanyWithEmployeeCount();
+  }
+  
   @HttpCode(HttpStatus.OK)
   @Put(':id')
   @ApiOperation({ summary: 'Update a company' })
@@ -94,4 +104,5 @@ export class CompanyController {
   ) {
     return this.companyService.deleteMultipleCompanies(deleteCompaniesDto.ids);
   }
+
 }

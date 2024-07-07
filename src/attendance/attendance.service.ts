@@ -193,34 +193,23 @@ export class AttendanceService {
     }
   }
 
-  // async getTotalAttendance(getAttendanceDto: GetAttendanceDto) {
-  //   try {
-  //     const employee = await this.employeeRepository.getEmployeeById(
-  //       getAttendanceDto.employeeId,
-  //     );
-  //     if (!employee) {
-  //       throw new NotFoundException(
-  //         `Employee with ID: ${getAttendanceDto.employeeId} not found.`,
-  //       );
-  //     }
-  //     const attendanceCount =
-  //       await this.attendanceRepository.getTotalAttendance(getAttendanceDto);
-  //     if (!attendanceCount) {
-  //       throw new BadRequestException(
-  //         `Error fetching attendance count of employee with ID: ${getAttendanceDto.employeeId}`,
-  //       );
-  //     }
-  //     return {
-  //       message: 'Attendance count fetched successfully',
-  //       data: attendanceCount,
-  //     };
-  //   } catch (error) {
-  //     this.logger.error(
-  //       `Error getting attendance of employee with ID: ${getAttendanceDto.employeeId}`,
-  //     );
-  //     throw error;
-  //   }
-  // }
+  async getAllAttendanceRecordsByCompanyIdAndMonth(companyId: string, month: string) {
+    try {
+      const attendanceRecords = await this.attendanceRepository.getAllAttendanceRecordsByCompanyIdAndMonth(companyId, month);
+      if (attendanceRecords.length === 0) {
+        throw new NotFoundException(
+          `No attendance records found`,
+        );
+      }
+      return {
+        message: 'Attendance records retrieved successfully',
+        data: attendanceRecords,
+      };
+    } catch (error) {
+      this.logger.error(`Error retrieving attendance records`, error.stack);
+      throw error;
+    }
+   }
 
   async deleteAttendanceById(id: string) {
     try {
