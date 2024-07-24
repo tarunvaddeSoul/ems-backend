@@ -21,7 +21,7 @@ export class EmployeeService {
     private readonly employeeRepository: EmployeeRepository,
     private readonly awsS3Service: AwsS3Service,
     private readonly logger: Logger,
-    private readonly comanyRepository: CompanyRepository,
+    private readonly companyRepository: CompanyRepository,
     private readonly designationRepository: DesignationRepository,
     private readonly departmentRepository: DepartmentRepository,
   ) {}
@@ -46,21 +46,37 @@ export class EmployeeService {
       //   );
       // }
       const employeeId = this.generateEmployeeId();
-      const company = await this.comanyRepository.findById(data.companyId);
+      const company = await this.companyRepository.findById(
+        data.currentCompanyId,
+      );
       if (!company) {
         throw new NotFoundException(
-          `Company with ID ${data.companyId} not found.`,
+          `Company with ID ${data.currentCompanyId} not found.`,
         );
       }
-
-      const designation = await this.designationRepository.getById(data.designationId);
-      if (!designation) {
-        throw new NotFoundException(`Designation with ID: ${data.designationId} not found.`);
+      let designation;
+      if (data.currentCompanyDesignationId) {
+        designation = await this.designationRepository.getById(
+          data.currentCompanyDesignationId,
+        );
+        if (!designation) {
+          throw new NotFoundException(
+            `Designation with ID: ${data.currentCompanyDesignationId} not found.`,
+          );
+        }
       }
 
-      const employeeDepartment = await this.departmentRepository.getEmployeeDepartmentById(data.employeeDepartmentId);
-      if (!employeeDepartment) {
-        throw new NotFoundException(`Employee Department with ID: ${data.employeeDepartmentId} not found.`);
+      let employeeDepartment;
+      if (data.currentCompanyDepartmentId) {
+        employeeDepartment =
+          await this.departmentRepository.getEmployeeDepartmentById(
+            data.currentCompanyDepartmentId,
+          );
+        if (!employeeDepartment) {
+          throw new NotFoundException(
+            `Employee Department with ID: ${data.currentCompanyDepartmentId} not found.`,
+          );
+        }
       }
 
       const folder = `employees/${employeeId}`;
@@ -85,14 +101,17 @@ export class EmployeeService {
         title: data.title,
         firstName: data.firstName,
         lastName: data.lastName,
-        designationId: data.designationId,
-        designationName: designation.name,
-        employeeDepartmentId: data.employeeDepartmentId,
-        employeeDepartmentName: employeeDepartment.name,
+        currentCompanyEmployeeDesignationName: designation.name,
+        currentCompanyEmployeeDepartmentName: employeeDepartment.name,
         mobileNumber: data.mobileNumber,
-        companyName: company.name,
-        companyId: data.companyId,
+        currentCompanyId: data.currentCompanyId || null,
+        currentCompanyDesignationId: data.currentCompanyDesignationId || null,
+        currentCompanyDepartmentId: data.currentCompanyDepartmentId || null,
+        currentCompanySalary: data.currentCompanySalary || null,
+        currentCompanyJoiningDate: data.currentCompanyJoiningDate || null,
+        currentCompanyName: company.name || null,
         recruitedBy: data.recruitedBy,
+        status: data.status,
         gender: data.gender,
         fatherName: data.fatherName,
         motherName: data.motherName,
@@ -100,7 +119,7 @@ export class EmployeeService {
         category: data.category,
         dateOfBirth: data.dateOfBirth,
         age: age,
-        dateOfJoining: data.dateOfJoining,
+        employeeOnboardingDate: data.employeeOnboardingDate,
         highestEducationQualification: data.highestEducationQualification,
         bloodGroup: data.bloodGroup,
         permanentAddress: data.permanentAddress,
@@ -130,7 +149,6 @@ export class EmployeeService {
         bankPassbook: bankPassbookUrl || '',
         markSheet: markSheetUrl || '',
         otherDocument: otherDocumentUrl || '',
-        salary: data.salary,
         aadhaarNumber: data.aadhaarNumber,
       };
 
@@ -167,16 +185,17 @@ export class EmployeeService {
         throw new NotFoundException(`Employee with ID ${id} not found`);
       }
       let company;
-      if (data.companyId) {
-        company = await this.comanyRepository.findById(data.companyId);
+      if (data.currentCompanyId) {
+        company = await this.companyRepository.findById(data.currentCompanyId);
         if (!company) {
           throw new NotFoundException(
-            `Company with ID ${data.companyId} not found.`,
+            `Company with ID ${data.currentCompanyId} not found.`,
           );
         }
       }
+      data.companyName = company.name;
       const employeeId = existingEmployee.id;
-      let name = '';
+      let name;
 
       if (data.firstName && data.lastName) {
         name = `${data.firstName}_${data.lastName}_${employeeId}`;
@@ -239,20 +258,29 @@ export class EmployeeService {
         'otherDocument',
       );
 
+      // Check if all required fields are present
+      if (
+        data.currentCompanyId &&
+        data.currentCompanyDesignationId &&
+        data.currentCompanyDepartmentId &&
+        data.currentCompanySalary
+      ) {
+        await this.updateEmploymentHistory(id, data);
+      } else {
+        throw new BadRequestException(
+          'All fields (currentCompanyId, currentCompanyDesignationId, currentCompanyDepartmentId, currentCompanySalary) must be provided.',
+        );
+      }
+
       // Update other fields from DTO
       existingEmployee.title = data.title ?? existingEmployee.title;
       existingEmployee.firstName = data.firstName ?? existingEmployee.firstName;
       existingEmployee.lastName = data.lastName ?? existingEmployee.lastName;
-      existingEmployee.designationId =
-        data.designationId ?? existingEmployee.designationId;
-      existingEmployee.employeeDepartmentId =
-        data.departmentId ?? existingEmployee.employeeDepartmentId;
+      existingEmployee.status = data.status ?? existingEmployee.status;
+      existingEmployee.employeeRelievingDate =
+        data.employeeRelievingDate ?? existingEmployee.employeeRelievingDate;
       existingEmployee.mobileNumber =
         data.mobileNumber ?? existingEmployee.mobileNumber;
-      existingEmployee.companyName = company
-        ? company.name
-        : existingEmployee.companyName;
-      existingEmployee.companyId = data.companyId ?? existingEmployee.companyId;
       existingEmployee.recruitedBy =
         data.recruitedBy ?? existingEmployee.recruitedBy;
       existingEmployee.gender = data.gender ?? existingEmployee.gender;
@@ -266,8 +294,8 @@ export class EmployeeService {
       existingEmployee.dateOfBirth =
         data.dateOfBirth ?? existingEmployee.dateOfBirth;
       existingEmployee.age = data.age ?? existingEmployee.age;
-      existingEmployee.dateOfJoining =
-        data.dateOfJoining ?? existingEmployee.dateOfJoining;
+      existingEmployee.employeeOnboardingDate =
+        data.employeeOnboardingDate ?? existingEmployee.employeeOnboardingDate;
       existingEmployee.highestEducationQualification =
         data.highestEducationQualification ??
         existingEmployee.highestEducationQualification;
@@ -332,12 +360,88 @@ export class EmployeeService {
     }
   }
 
+  async getEmploymentHistory(employeeId: string) {
+    try {
+      const existingEmployee = await this.employeeRepository.getEmployeeById(
+        employeeId,
+      );
+      if (!existingEmployee) {
+        throw new NotFoundException(`Employee with ID ${employeeId} not found`);
+      }
+      const employmentHistory =
+        await this.employeeRepository.getEmploymentHistory(employeeId);
+      return {
+        message: 'Employment history fetched successfully',
+        data: employmentHistory,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error in getting employee history with error ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  private async updateEmploymentHistory(
+    employeeId: string,
+    data: UpdateEmployeeDto,
+  ): Promise<void> {
+    await this.employeeRepository.closeCurrentEmploymentHistory(employeeId);
+    await this.employeeRepository.createEmploymentHistory({
+      employeeId,
+      companyId: data.currentCompanyId,
+      designationId: data.currentCompanyDesignationId,
+      departmentId: data.currentCompanyDepartmentId,
+      salary: data.currentCompanySalary,
+      joiningDate: data.currentCompanyJoiningDate,
+      companyName: data.companyName,
+    });
+  }
+
   private extractKeyFromUrl(url: string): string {
     if (!url) {
       return null;
     }
     const urlParts = url.split('/');
     return urlParts.slice(3).join('/');
+  }
+
+  private async uploadFiles(
+    files: any,
+    folder: string,
+  ): Promise<Partial<Employee>> {
+    const fileUrls: Partial<Employee> = {};
+    for (const [key, file] of Object.entries(files)) {
+      if (file) {
+        fileUrls[key] = await this.awsS3Service.uploadFile(
+          file,
+          `${folder}/${key}`,
+        );
+      }
+    }
+    return fileUrls;
+  }
+
+  private async updateFiles(
+    files: Express.Multer.File,
+    folder: string,
+    existingEmployee: Employee,
+  ): Promise<Partial<Employee>> {
+    const fileUrls: Partial<Employee> = {};
+    for (const [key, file] of Object.entries(files)) {
+      if (file) {
+        if (existingEmployee[key]) {
+          await this.awsS3Service.deleteFile(
+            this.extractKeyFromUrl(existingEmployee[key]),
+          );
+        }
+        fileUrls[key] = await this.awsS3Service.uploadFile(
+          file,
+          `${folder}/${key}`,
+        );
+      }
+    }
+    return fileUrls;
   }
 
   async getEmployeeById(id: string): Promise<Employee | any> {
@@ -430,9 +534,13 @@ export class EmployeeService {
     }
   }
 
-  async getAllEmployees(queryParams: GetAllEmployeesDto): Promise<Employee[] | any> {
+  async getAllEmployees(
+    queryParams: GetAllEmployeesDto,
+  ): Promise<Employee[] | any> {
     try {
-    const employees = await this.employeeRepository.getAllEmployees(queryParams);
+      const employees = await this.employeeRepository.getAllEmployees(
+        queryParams,
+      );
       return {
         message: 'Employee fetched successfully',
         data: employees,
@@ -478,7 +586,9 @@ export class EmployeeService {
   }
 
   private generateEmployeeId(): string {
-    const random4DigitNumber = Math.floor(1000 + Math.random() * 9000).toString();
+    const random4DigitNumber = Math.floor(
+      1000 + Math.random() * 9000,
+    ).toString();
     return `TSS${random4DigitNumber}`;
   }
 }

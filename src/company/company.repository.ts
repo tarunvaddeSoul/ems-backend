@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateCompanyDto } from './dto/create-company.dto';
-import { UpdateCompanyDto } from './dto/update-company.dto';
-import { Company, Prisma } from '@prisma/client';
+// import { CreateCompanyDto } from './dto/create-company.dto';
+// import { UpdateCompanyDto } from './dto/update-company.dto';
+import { Company, EmploymentHistory, Prisma } from '@prisma/client';
 import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
+import {
+  CreateCompanyDto,
+  SalaryTemplateDto,
+  UpdateCompanyDto,
+} from './dto/company.dto';
+import { plainToClass } from 'class-transformer';
 
 @Injectable()
 export class CompanyRepository {
@@ -16,62 +22,112 @@ export class CompanyRepository {
         address,
         contactPersonName,
         contactPersonNumber,
-        presentDaysCount,
-        ESIC,
-        PF,
-        BONUS,
-        LWF,
-        otherAllowance,
-        otherAllowanceRemark,
+        salaryTemplates,
+        status,
+        companyOnboardingDate,
       } = data;
+
       const company = await this.prisma.company.create({
         data: {
           name,
           address,
           contactPersonName,
           contactPersonNumber,
-          presentDaysCount,
-          ESIC,
-          PF,
-          BONUS,
-          LWF,
-          otherAllowance,
-          otherAllowanceRemark,
+          status,
+          companyOnboardingDate,
+          salaryTemplates: {
+            create: {
+              fields: salaryTemplates as any,
+            },
+          },
+        },
+        include: {
+          salaryTemplates: true,
         },
       });
+
       return company;
     } catch (error) {
-      return error;
+      // this.logger.error(`Error creating company: ${error.message}`);
+      throw error;
     }
   }
 
   async update(id: string, data: UpdateCompanyDto): Promise<Company> {
     try {
-      const company = await this.prisma.company.update({ where: { id }, data });
-      return company;
+      const { salaryTemplates, ...companyData } = data;
+
+      const updatedCompany = await this.prisma.company.update({
+        where: { id },
+        data: {
+          ...companyData,
+          salaryTemplates: salaryTemplates
+            ? {
+                updateMany: {
+                  where: {
+                    companyId: id,
+                  },
+                  data: {
+                    fields: salaryTemplates as any,
+                  },
+                },
+              }
+            : undefined,
+        },
+        include: {
+          salaryTemplates: true,
+        },
+      });
+
+      // If no salary template exists, create one
+      if (salaryTemplates && updatedCompany.salaryTemplates.length === 0) {
+        await this.prisma.salaryTemplate.create({
+          data: {
+            companyId: id,
+            fields: salaryTemplates as any,
+          },
+        });
+
+        // Fetch the company again to include the newly created salary template
+        return await this.prisma.company.findUnique({
+          where: { id },
+          include: { salaryTemplates: true },
+        });
+      }
+
+      return updatedCompany;
     } catch (error) {
-      return error;
+      // this.logger.error(`Error updating company: ${error.message}`);
+      throw error;
     }
   }
 
-  async findById(id: string): Promise<Company> {
+  async findById(id: string) {
     try {
-      const company = await this.prisma.company.findUnique({ where: { id } });
+      const company = await this.prisma.company.findUnique({
+        where: { id },
+        select: {
+          name: true,
+          address: true,
+          contactPersonName: true,
+          contactPersonNumber: true,
+          status: true,
+          companyOnboardingDate: true,
+          salaryTemplates: { select: { fields: true } },
+        },
+      });
       return company;
     } catch (error) {
-      return error;
+      throw error;
     }
   }
 
   async companyExists(name: string): Promise<boolean> {
     try {
       const company = await this.prisma.company.findFirst({ where: { name } });
-      if (company) {
-        return true;
-      }
-      return false;
+      return !!company;
     } catch (error) {
-      return error;
+      throw error;
     }
   }
 
@@ -96,19 +152,6 @@ export class CompanyRepository {
               },
               {
                 contactPersonNumber: {
-                  contains: searchText,
-                  mode: 'insensitive',
-                },
-              },
-              {
-                presentDaysCount: { contains: searchText, mode: 'insensitive' },
-              },
-              { ESIC: { contains: searchText, mode: 'insensitive' } },
-              { PF: { contains: searchText, mode: 'insensitive' } },
-              { BONUS: { contains: searchText, mode: 'insensitive' } },
-              { LWF: { contains: searchText, mode: 'insensitive' } },
-              {
-                otherAllowanceRemark: {
                   contains: searchText,
                   mode: 'insensitive',
                 },
@@ -140,37 +183,53 @@ export class CompanyRepository {
       });
       return deletedResponse;
     } catch (error) {
-      return error;
+      throw error;
     }
   }
 
-  async getCompanyWithEmployeeCount(): Promise<{ name: string; employeeCount: number }[]> {
+  async getCompanyWithEmployeeCount(): Promise<
+    { name: string; employeeCount: number }[]
+  > {
     try {
       const companies = await this.prisma.company.findMany({
         include: {
           _count: {
-            select: { employees: true },
+            select: { EmploymentHistory: true },
           },
         },
       });
-  
+
       // Sort companies by employeeCount in descending order
       companies.sort((a, b) => {
-        if (a._count?.employees && b._count?.employees) {
-          return b._count.employees - a._count.employees; // Descending order
+        if (a._count?.EmploymentHistory && b._count?.EmploymentHistory) {
+          return b._count.EmploymentHistory - a._count.EmploymentHistory; // Descending order
         } else {
-          // Handle cases where _count.employees might be null or undefined
           return 0; // Maintain current order
         }
       });
-  
-      return companies.map(company => ({
+
+      return companies.map((company) => ({
         name: company.name,
-        employeeCount: company._count?.employees || 0, // Access safely and handle potential null
+        employeeCount: company._count?.EmploymentHistory || 0,
       }));
     } catch (error) {
       throw error;
     }
   }
-  
+
+  async getEmploymentHistory(companyId: string): Promise<EmploymentHistory[]> {
+    try {
+      const employmentHistory = await this.prisma.employmentHistory.findMany({
+        where: { companyId },
+        include: {
+          employee: true,
+          designation: true,
+          department: true,
+        },
+      });
+      return employmentHistory;
+    } catch (error) {
+      throw error;
+    }
+  }
 }

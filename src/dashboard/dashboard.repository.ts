@@ -18,9 +18,12 @@ export class DashboardRepository {
     const formattedLastDay = this.formatDateToComparableString(lastDayOfMonth);
 
     const employeesInDateRange = await this.prisma.employee.findMany();
+    if (employeesInDateRange.length == 0) {
+      return 0;
+    }
     
     const filteredEmployees = employeesInDateRange.filter(employee => {
-      const employeeDate = this.formatDateToComparableString(this.parseDate(employee.dateOfJoining));
+      const employeeDate = this.formatDateToComparableString(this.parseDate(employee.employeeOnboardingDate));
       return employeeDate >= formattedFirstDay && employeeDate <= formattedLastDay;
     });
 

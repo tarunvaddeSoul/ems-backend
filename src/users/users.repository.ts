@@ -11,13 +11,14 @@ export class UsersRepository {
     private readonly prisma: PrismaService,
   ) {}
 
-  async createUser(data: RegisterDto) {
+  async createUser(data: RegisterDto): Promise<User> {
     try {
-      const { name, email, password, role, departmentId } = data;
+      const { name, mobileNumber, email, password, role, departmentId } = data;
       const newUser = await this.prisma.user.create({
         data: {
           id: uuidv4(),
           name,
+          mobileNumber,
           email,
           password,
           role,
@@ -105,6 +106,12 @@ export class UsersRepository {
       this.logger.error(`Failed to create user: ${error.message}`);
       return error;
     }
+  }
+
+  async deleteRefreshToken(tokenId: string): Promise<void> {
+    await this.prisma.refreshToken.delete({
+      where: { id: tokenId },
+    });
   }
 
   async findUserById(id: string): Promise<User> {

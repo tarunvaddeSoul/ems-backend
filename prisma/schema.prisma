@@ -8,18 +8,23 @@ generator client {
 }
 
 enum Role {
-  USER
+  HR
+  OPERATIONS
+  ACCOUNTS
+  FIELD
   ADMIN
+  USER
 }
 
 model User {
   id           String         @id @default(uuid())
   name         String
+  mobileNumber String
   email        String         @unique
   department   UserDepartment @relation(fields: [departmentId], references: [id])
   departmentId String
   password     String
-  role         Role
+  role         Role           @default(USER)
   createdAt    DateTime       @default(now())
 }
 
@@ -30,15 +35,19 @@ model UserDepartment {
 }
 
 model EmployeeDepartment {
-  id        String     @id @default(uuid())
-  name      String     @unique
-  employees Employee[]
+  id   String @id @default(uuid())
+  name String @unique
+  // employees Employee[]
+
+  EmploymentHistory EmploymentHistory[]
 }
 
 model Designation {
-  id        String     @id @default(uuid())
-  name      String     @unique
-  employees Employee[]
+  id   String @id @default(uuid())
+  name String @unique
+  // employees Employee[]
+
+  EmploymentHistory EmploymentHistory[]
 }
 
 model RefreshToken {
@@ -89,25 +98,57 @@ enum LWFOptions {
 }
 
 model Company {
-  id                   String      @id @default(uuid())
-  name                 String
-  address              String
-  contactPersonName    String
-  contactPersonNumber  String
-  createdAt            DateTime    @default(now())
-  presentDaysCount     String
-  PF                   String
-  ESIC                 String
-  BONUS                String
-  LWF                  String
-  otherAllowance       Int
-  otherAllowanceRemark String?
+  id                    String           @id @default(uuid())
+  name                  String
+  address               String
+  contactPersonName     String
+  contactPersonNumber   String
+  status                String
+  companyOnboardingDate String
+  salaryTemplates       SalaryTemplate[]
+  salaryRecords         SalaryRecord[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  PayrollPeriod         PayrollPeriod[]
+  Attendance            Attendance[]
+  Salary                Salary[]
 
-  employees   Employee[]
-  attendances Attendance[]
-  Salary      Salary[]
+  EmploymentHistory EmploymentHistory[]
 }
 
+model SalaryTemplate {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  fields    Json // Store the enabled/disabled status and default values
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SalaryRecord {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id])
+  month      DateTime
+  salaryData Json // Store all salary-related fields
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, companyId, month])
+}
+
+model PayrollPeriod {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  startDate DateTime
+  endDate   DateTime
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 enum Category {
   SC
@@ -130,6 +171,11 @@ enum Gender {
   FEMALE
 }
 
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
 enum Title {
   MR
   MS
@@ -140,25 +186,18 @@ model Employee {
   title                         Title
   firstName                     String
   lastName                      String
-  designationId                 String
-  designationName               String
-  designation                   Designation            @relation(fields: [designationId], references: [id])
-  employeeDepartmentId          String
-  employeeDepartmentName        String
-  department                    EmployeeDepartment     @relation(fields: [employeeDepartmentId], references: [id])
   mobileNumber                  String
-  companyName                   String
-  companyId                     String
-  company                       Company                @relation(fields: [companyId], references: [id])
-  recruitedBy                   String
   gender                        Gender
   fatherName                    String
   motherName                    String
   husbandName                   String?
   category                      Category
   dateOfBirth                   String
+  employeeOnboardingDate        String
+  employeeRelievingDate         String?
+  status                        Status
+  recruitedBy                   String
   age                           Int                    @default(0)
-  dateOfJoining                 String
   highestEducationQualification EducationQualification
   bloodGroup                    String
   permanentAddress              String
@@ -188,15 +227,35 @@ model Employee {
   bankPassbook                  String
   markSheet                     String
   otherDocument                 String
-  salary                        Float
   aadhaarNumber                 String
   createdAt                     DateTime               @default(now())
   updatedAt                     DateTime               @updatedAt
-  attendances                   Attendance[]
-  salaries                      Salary[]
+  // Relations
+  employmentHistories EmploymentHistory[]
+  salaryRecords       SalaryRecord[]
+  attendances         Attendance[]
+  salaries            Salary[]
 
   @@index([aadhaarNumber], name: "idx_aadhaarNumber")
   @@index([mobileNumber], name: "idx_mobileNumber")
+}
+
+model EmploymentHistory {
+  id            String             @id @default(uuid())
+  employeeId    String
+  employee      Employee           @relation(fields: [employeeId], references: [id])
+  companyName   String
+  companyId     String
+  company       Company            @relation(fields: [companyId], references: [id])
+  designationId String
+  designation   Designation        @relation(fields: [designationId], references: [id])
+  departmentId  String
+  department    EmployeeDepartment @relation(fields: [departmentId], references: [id])
+  salary        Float
+  joiningDate   String
+  leavingDate   String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 }
 
 model Attendance {
@@ -220,17 +279,46 @@ model AttendanceSheet {
   @@unique([companyId, month])
 }
 
-enum Status {
-  PRESENT
-  ABSENT
-}
+// model Salary {
+//   id         String   @id @default(uuid())
+//   employeeId String
+//   companyId  String
+//   amount     Float
+//   date       DateTime
+//   data       Json // Store all salary components
+//   employee   Employee @relation(fields: [employeeId], references: [id])
+//   company    Company  @relation(fields: [companyId], references: [id])
+// }
+
 
 model Salary {
-  id         String   @id @default(uuid())
-  employeeId String
-  companyId  String
-  amount     Float
-  date       DateTime
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  company    Company  @relation(fields: [companyId], references: [id])
+  id                    String   @id @default(uuid())
+  employeeId            String
+  companyId             String
+  month                 String   // Format: MM-YYYY
+  monthlySalary         Float
+  dutyDone              Int
+  wagesPerDay           Float
+  basicPay              Float
+  epfWages              Float
+  bonus                 Float
+  grossSalary           Float
+  pf                    Float
+  esic                  Float
+  advance               Float
+  uniform               Float
+  penalty               Float
+  lwf                   Float
+  otherDeductions       Float
+  otherDeductionsRemark String?
+  allowance             Float
+  allowanceRemark       String?
+  totalDeductions       Float
+  netSalary             Float
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  employee              Employee @relation(fields: [employeeId], references: [id])
+  company               Company  @relation(fields: [companyId], references: [id])
+
+  @@unique([employeeId, companyId, month])
 }

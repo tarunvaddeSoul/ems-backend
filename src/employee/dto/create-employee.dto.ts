@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
 import { IsNotEmpty, IsString, IsNumber, IsOptional, IsEnum, IsAlphanumeric, IsInt, IsPositive, Matches } from 'class-validator';
-import { Category, EducationQualification, Gender, Title } from '../enum/employee.enum';
-import { IsDateFormat } from '../decorator/date-format.decorator';
+import { Category, EducationQualification, Gender, Status, Title } from '../enum/employee.enum';
+import { IsDateFormat } from '../../common/validators/date-format.decorator';
 
 export class CreateEmployeeDto {
   @ApiProperty({ enum: Title })
@@ -22,26 +22,25 @@ export class CreateEmployeeDto {
   @Transform(({ value }) => value.toUpperCase())
   lastName: string;
 
-  @ApiProperty({ type: 'string' })
-  @IsNotEmpty()
-  @IsString()
-  designationId: string;
+  // @ApiProperty({ type: 'string' })
+  // @IsNotEmpty()
+  // @IsString()
+  // designationId: string;
+
+  // @ApiProperty({ type: 'string' })
+  // @IsNotEmpty()
+  // @IsString()
+  // employeeDepartmentId: string;
 
   @ApiProperty({ type: 'string' })
   @IsNotEmpty()
   @IsString()
-  employeeDepartmentId: string;
-
-  @ApiProperty({ type: 'string' })
-  @IsNotEmpty()
-  @IsString()
-  @Transform(({ value }) => value.toUpperCase())
   mobileNumber: string;
 
-  @ApiProperty({ type: 'string' })
-  @IsNotEmpty()
-  @IsString()
-  companyId: string;
+  // @ApiProperty({ type: 'string' })
+  // @IsNotEmpty()
+  // @IsString()
+  // companyId: string;
 
   @ApiProperty({ type: 'string' })
   @IsNotEmpty()
@@ -86,13 +85,18 @@ export class CreateEmployeeDto {
   @ApiProperty({ type: 'string' })
   @IsNotEmpty()
   @IsString()
-  @IsDateFormat({ message: 'dateOfJoining must be in the format DD-MM-YYYY' })
-  dateOfJoining: string;
+  @IsDateFormat({ message: 'employeeOnboardingDate must be in the format DD-MM-YYYY' })
+  employeeOnboardingDate: string;
 
   @ApiProperty({ enum: EducationQualification })
   @IsNotEmpty()
   @IsEnum(EducationQualification)
   highestEducationQualification: EducationQualification;
+  
+  @ApiProperty({ enum: Status })
+  @IsNotEmpty()
+  @IsEnum(Status)
+  status: Status;
 
   @ApiProperty({ type: 'string' })
   @IsNotEmpty()
@@ -226,15 +230,42 @@ export class CreateEmployeeDto {
   @IsNotEmpty()
   @IsString()
   @IsDateFormat({ message: 'medicalCertificateDate must be in the format DD-MM-YYYY' })
-
   medicalCertificateDate: string;
 
+  // @ApiProperty({ type: 'number' })
+  // @IsNotEmpty()
+  // @IsInt()
+  // @IsPositive()
+  // @Type(() => Number)
+  // salary: number;
+
+  @ApiProperty({ type: 'string' })
+  @IsOptional()
+  @IsString()
+  currentCompanyId?: string;
+
+  @ApiProperty({ type: 'string' })
+  @IsOptional()
+  @IsString()
+  currentCompanyDesignationId?: string;
+
+  @ApiProperty({ type: 'string' })
+  @IsOptional()
+  @IsString()
+  currentCompanyDepartmentId?: string;
+
   @ApiProperty({ type: 'number' })
-  @IsNotEmpty()
-  @IsInt()
+  @IsOptional()
+  @IsNumber()
   @IsPositive()
   @Type(() => Number)
-  salary: number;
+  currentCompanySalary?: number;
+
+  @ApiProperty({ type: 'string' })
+  @IsOptional()
+  @IsString()
+  @IsDateFormat({ message: 'currentJoiningDate must be in the format DD-MM-YYYY' })
+  currentCompanyJoiningDate?: string;
 
   @ApiProperty({ type: 'string' })
   @IsNotEmpty()

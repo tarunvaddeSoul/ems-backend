@@ -1,23 +1,39 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { DashboardRepository } from './dashboard.repository';
 
 @Injectable()
 export class DashboardService {
   constructor(private readonly dashboardRepository: DashboardRepository) {}
 
-  async getTotalEmployees(): Promise<number> {
-    return this.dashboardRepository.getTotalEmployees();
+  async getTotalEmployees() {
+    // const count = await this.dashboardRepository.getTotalEmployees();
+    // if (count == 0) {
+    //   throw new NotFoundException('No employees found');
+    // }
+    return await this.dashboardRepository.getTotalEmployees();
   }
 
-  async getNewEmployeesThisMonth(): Promise<number> {
-    return this.dashboardRepository.getNewEmployeesThisMonth();
+  async getNewEmployeesThisMonth() {
+    // const count = await this.dashboardRepository.getNewEmployeesThisMonth();
+    // if (count == 0) {
+    //   throw new NotFoundException('No employees found');
+    // }
+    return await this.dashboardRepository.getNewEmployeesThisMonth();
   }
 
-  async getTotalCompanies(): Promise<number> {
-    return this.dashboardRepository.getTotalCompanies();
+  async getTotalCompanies() {
+    // const count = await this.dashboardRepository.getTotalCompanies();
+    // if (count == 0) {
+    //   throw new NotFoundException('No companies found');
+    // }
+    return await this.dashboardRepository.getTotalCompanies();
   }
 
-  async getNewCompaniesThisMonth(): Promise<number> {
-    return this.dashboardRepository.getNewCompaniesThisMonth();
+  async getNewCompaniesThisMonth() {
+    // const count = await this.dashboardRepository.getNewCompaniesThisMonth();
+    // if (count == 0) {
+    //   throw new NotFoundException('No companies found');
+    // }
+    return await this.dashboardRepository.getNewCompaniesThisMonth();
   }
 }

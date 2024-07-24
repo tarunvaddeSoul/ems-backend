@@ -13,12 +13,13 @@ import {
   Query,
 } from '@nestjs/common';
 import { CompanyService } from './company.service';
-import { CreateCompanyDto } from './dto/create-company.dto';
-import { UpdateCompanyDto } from './dto/update-company.dto';
+// import { CreateCompanyDto } from './dto/create-company.dto';
+// import { UpdateCompanyDto } from './dto/update-company.dto';
 import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { DeleteCompaniesDto } from './dto/delete-companies.dto';
 import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
+import { CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
 
 @Controller('companies')
 @UseInterceptors(TransformInterceptor)

@@ -8,13 +8,20 @@ import {
   IsEnum,
   IsOptional,
 } from 'class-validator';
-import { ROLE } from 'src/enum/role.enum';
+import { Role } from '../enum/roles.enum';
 
 export class RegisterDto {
   @IsNotEmpty()
   @IsString()
   @ApiProperty()
   name: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(10)
+  @MaxLength(10)
+  @ApiProperty()
+  mobileNumber: string;
 
   @IsNotEmpty()
   @IsEmail()
@@ -29,14 +36,14 @@ export class RegisterDto {
   password: string;
 
   @IsOptional()
-  @IsEnum(ROLE)
+  @IsEnum(Role)
   @ApiProperty({
-    enum: ROLE,
+    enum: Role,
     enumName: 'Role',
     description: 'User role',
-    default: ROLE.USER,
+    default: Role.USER,
   })
-  role: ROLE = ROLE.USER;
+  role: Role = Role.USER;
 
   @IsNotEmpty()
   @IsString()

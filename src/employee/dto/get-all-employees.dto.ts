@@ -1,7 +1,7 @@
 import { IsOptional, IsInt, Min, Max, IsString, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateFormat } from '../decorator/date-format.decorator';
+import { IsDateFormat } from '../../common/validators/date-format.decorator';
 
 enum SortOrder {
   ASC = 'asc',

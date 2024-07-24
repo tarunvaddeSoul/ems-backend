@@ -171,6 +171,24 @@ export class EmployeeController {
     return this.employeeService.getEmployeeById(id);
   }
 
+  @Get('employment-history/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get Employment history by ID',
+    description: 'Retrieves the employment history details of an employee by their ID.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Employee retrieved successfully.',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Employee not found.',
+  })
+  async getEmploymentHistory(@Param('id') id: string) {
+    return this.employeeService.getEmploymentHistory(id);
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

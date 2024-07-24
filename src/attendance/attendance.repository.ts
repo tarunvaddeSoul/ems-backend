@@ -181,14 +181,34 @@ export class AttendanceRepository {
           employee: {
             select: {
               id: true,
-              designationName: true,
               firstName: true,
               lastName: true,
+              employmentHistories: {
+                where: {
+                  companyId: companyId,
+                },
+                orderBy: {
+                  joiningDate: 'desc',
+                },
+                take: 1,
+                select: {
+                  designation: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                  department: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
             },
           },
           company: {
             select: {
-              name: true, // Select company name if needed
+              name: true,
             },
           },
         },
@@ -198,7 +218,8 @@ export class AttendanceRepository {
         employeeID: record.employee.id,
         employeeName: `${record.employee.firstName} ${record.employee.lastName}`,
         companyName: record.company?.name || 'Unknown Company',
-        designationName: record.employee.designationName,
+        designationName: record.employee.employmentHistories[0]?.designation.name || 'Unknown Designation',
+        departmentName: record.employee.employmentHistories[0]?.department.name || 'Unknown Department',
         presentCount: record.presentCount,
       }));
     } catch (error) {

@@ -6,9 +6,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CompanyRepository } from './company.repository';
-import { CreateCompanyDto } from './dto/create-company.dto';
-import { UpdateCompanyDto } from './dto/update-company.dto';
+// import { CreateCompanyDto } from './dto/create-company.dto';
+// import { UpdateCompanyDto } from './dto/update-company.dto';
 import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
+import { CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
 
 @Injectable()
 export class CompanyService {
@@ -16,6 +17,7 @@ export class CompanyService {
     private readonly companyRepository: CompanyRepository,
     private readonly logger: Logger,
   ) {}
+  
 
   async createCompany(data: CreateCompanyDto) {
     try {

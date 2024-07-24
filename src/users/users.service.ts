@@ -16,6 +16,7 @@ import { nanoid } from 'nanoid';
 import { MailService } from './mail.service';
 import { ResetPasswordDTO } from './dto/reset-password.dto';
 import { DepartmentRepository } from 'src/departments/department.repository';
+import { Role, User } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -37,7 +38,7 @@ export class UsersService {
     if (!isMatch) {
       throw new UnauthorizedException('Password does not match');
     }
-    return this.generateUserTokens(user.id);
+    return this.generateUserTokens(user.id, user.role);
   }
 
   async register(user: RegisterDto): Promise<any> {
@@ -52,19 +53,39 @@ export class UsersService {
     const hashedPassword = await bcrypt.hash(user.password, 10);
     user.password = hashedPassword;
     const newUser = await this.usersRepository.createUser(user);
-    return this.generateUserTokens(newUser.id);
+    return this.generateUserTokens(newUser.id, newUser.role);
   }
 
-  async generateUserTokens(userId: string) {
+  async generateUserTokens(userId: string, role: Role) {
     const accessToken = await this.jwtService.sign(
-      { userId },
+      { userId, role },
       { expiresIn: '1h' },
     );
     const refreshToken = uuidv4();
     await this.storeRefreshToken(refreshToken, userId);
     return { accessToken, refreshToken };
   }
+  async getUserRole(userId: string): Promise<Role> {
+    const user = await this.usersRepository.findUserById(userId);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+    return user.role;
+  }
 
+  async updateUserRole(userId: string, role: Role): Promise<void> {
+    const user = await this.usersRepository.findUserById(userId);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+    user.role = role;
+    await this.usersRepository.updateUser(userId, user);
+  }
+
+  async hasRole(userId: string, role: Role): Promise<boolean> {
+    const userRole = await this.getUserRole(userId);
+    return userRole === role;
+  }
   async storeRefreshToken(token: string, userId: string) {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 3);
@@ -80,7 +101,9 @@ export class UsersService {
       if (!refreshTokenResponse) {
         throw new UnauthorizedException('Token invalid.');
       }
-      return this.generateUserTokens(refreshTokenResponse.userId);
+      const user = await this.usersRepository.findUserById(refreshTokenResponse.userId);
+
+      return this.generateUserTokens(refreshTokenResponse.userId, user.role);
     } catch (error) {
       throw error;
     }
@@ -190,6 +213,49 @@ export class UsersService {
       return null;
     } catch (error) {
       this.logger.error(`Failed to fetch user profile: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getUserProfile(userId: string): Promise<Partial<User>> {
+    try {
+      const user = await this.usersRepository.findUserById(userId);
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+      // Remove sensitive information
+      const { password, ...userProfile } = user;
+      return userProfile;
+    } catch (error) {
+      this.logger.error(`Failed to fetch user profile: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getCurrentUser(userId: string): Promise<Partial<User>> {
+    try {
+      const user = await this.usersRepository.findUserById(userId);
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+      // Remove sensitive information
+      const { password, ...currentUser } = user;
+      return currentUser;
+    } catch (error) {
+      this.logger.error(`Failed to fetch current user: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async logoutUser(refreshToken: string): Promise<void> {
+    try {
+      const token = await this.usersRepository.getRefreshToken(refreshToken);
+      if (!token) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+      await this.usersRepository.deleteRefreshToken(token.id);
+    } catch (error) {
+      this.logger.error(`Failed to logout user: ${error.message}`);
       throw error;
     }
   }

@@ -4,6 +4,8 @@ import { SalaryController } from './salary.controller';
 import { EmployeeRepository } from 'src/employee/employee.repository';
 import { AttendanceRepository } from 'src/attendance/attendance.repository';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CompanyRepository } from 'src/company/company.repository';
+import { SalaryRepository } from './salary.repository';
 
 @Module({
   controllers: [SalaryController],
@@ -11,8 +13,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
     SalaryService,
     EmployeeRepository,
     AttendanceRepository,
+    CompanyRepository,
     Logger,
     PrismaService,
+    SalaryRepository,
   ],
 })
 export class SalaryModule {}

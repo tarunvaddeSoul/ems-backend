@@ -1,8 +1,9 @@
-import { Category, EducationQualification, Gender, Title } from "../enum/employee.enum";
+import { $Enums } from "@prisma/client";
+import { Category, EducationQualification, Gender, Status, Title } from "../enum/employee.enum";
 
 export interface IEmployee {
   id?: string;
-  title?: Title;
+  title?: Title| $Enums.Title;
   firstName?: string;
   lastName?: string;
   designationName?: string;
@@ -11,17 +12,25 @@ export interface IEmployee {
   employeeDepartmentName?: string;
   mobileNumber?: string;
   companyName?: string;
-  companyId?: string;
+  currentCompanyId?: string;
+  currentCompanyDesignationId?: string;
+  currentCompanyDepartmentId?: string;
+  currentCompanySalary?: number;
+  currentCompanyJoiningDate?: string;
+  currentCompanyName?: string;
+  currentCompanyEmployeeDepartmentName?: string;
+  currentCompanyEmployeeDesignationName?: string;
+  status?: Status | $Enums.Status;
   recruitedBy?: string;
-  gender?: Gender;
+  gender?: Gender | $Enums.Gender;
   fatherName?: string;
   motherName?: string;
   husbandName?: string | null;
-  category?: Category;
+  category?: Category | $Enums.Category;
   dateOfBirth?: string;
   age?: number;
-  dateOfJoining?: string;
-  highestEducationQualification?: EducationQualification;
+  employeeOnboardingDate?: string;
+  highestEducationQualification?: EducationQualification | $Enums.EducationQualification;
   bloodGroup?: string;
   permanentAddress?: string;
   presentAddress?: string;

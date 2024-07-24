@@ -29,7 +29,6 @@ async function bootstrap() {
       'Bearer', // This name here is important for matching up with @ApiBearerAuth() in your controller!
     )
     .build();
-
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('/', app, document);
   await app.listen(3003);

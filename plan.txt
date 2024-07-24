@@ -1,0 +1,358 @@
+I am creating a website that manages my security agency's payroll and employees.
+
+For the backend, I will be using Nestjs
+For frontend, I will be using React TS and Mantine
+For database, Postgres and Prisma ORM
+
+The idea is - 
+
+As I run security agency and employee outsourcing, there will be multiple companies and employees working under me for those different companies.
+
+For company creation, 
+We will take name, address, contactPersondetails and salary template (like PF, ESIC, Company Name and all which will be later used in generating salary sheet for that particular company)
+
+For employee registration,
+We will take all his details like name, contact details, bank account details and also the company he will be working at present (like joining data, salary for the company and so on.. and later I should be able to update the company details and this can be in the form of an array like storing the work history of an employee)
+
+For attendance,
+we will open a company, select month, and there will be a display of all the employees working under that company and will mark the present count in a month
+
+For salary,
+We will not process salaries, but will calculate salaries for all the employees working in a company. We will select company, select month and there we will calculate the salary with the salary template fields specified for this particular company. And generate report.
+
+
+
+
+ok so let's come to the salary part
+
+firstly, i am not sure if this is the right approach (you can give me suggestions on the flow of the frontend as this will be for production),
+
+the admin will come to salary page, the first step will be to select a company, then select month in (MM-YYYY), then there will be a list of all the employees in the company and it can be in a tabular form where there will be headings as salary template fields which we take while onboarding the company
+
+if i get company by id the data 
+
+{
+  "statusCode": 200,
+  "message": "Company fetched successfully",
+  "data": {
+    "name": "GOOGLE",
+    "address": "STRING",
+    "contactPersonName": "STRING",
+    "contactPersonNumber": "STRING",
+    "status": "ACTIVE",
+    "companyOnboardingDate": "12-12-2012",
+    "salaryTemplates": [
+      {
+        "fields": {
+          "pf": {
+            "value": "string",
+            "enabled": true
+          },
+          "lwf": {
+            "value": "string",
+            "enabled": true
+          },
+          "esic": {
+            "value": "string",
+            "enabled": true
+          },
+          "name": {
+            "value": "string",
+            "enabled": true
+          },
+          "bonus": {
+            "value": "string",
+            "enabled": true
+          },
+          "advance": {
+            "value": "string",
+            "enabled": true
+          },
+          "penalty": {
+            "value": "string",
+            "enabled": true
+          },
+          "uniform": {
+            "value": "string",
+            "enabled": true
+          },
+          "basicPay": {
+            "value": "string",
+            "enabled": true
+          },
+          "dutyDone": {
+            "value": "string",
+            "enabled": true
+          },
+          "epfWages": {
+            "value": "string",
+            "enabled": true
+          },
+          "basicDuty": {
+            "value": "string",
+            "enabled": true
+          },
+          "netSalary": {
+            "value": "string",
+            "enabled": true
+          },
+          "uanNumber": {
+            "value": "string",
+            "enabled": true
+          },
+          "esicNumber": {
+            "value": "string",
+            "enabled": true
+          },
+          "fatherName": {
+            "value": "string",
+            "enabled": true
+          },
+          "companyName": {
+            "value": "string",
+            "enabled": true
+          },
+          "designation": {
+            "value": "string",
+            "enabled": true
+          },
+          "grossSalary": {
+            "value": "string",
+            "enabled": true
+          },
+          "monthlyRate": {
+            "value": "string",
+            "enabled": true
+          },
+          "wagesPerDay": {
+            "value": "string",
+            "enabled": true
+          },
+          "pfPaidStatus": {
+            "value": "string",
+            "enabled": true
+          },
+          "advanceGivenBy": {
+            "value": "string",
+            "enabled": true
+          },
+          "otherAllowance": {
+            "value": "string",
+            "enabled": true
+          },
+          "otherDeductions": {
+            "value": "string",
+            "enabled": true
+          },
+          "totalDeductions": {
+            "value": "string",
+            "enabled": true
+          },
+          "esicFilingStatus": {
+            "value": "string",
+            "enabled": true
+          },
+          "otherAllowanceRemark": {
+            "value": "string",
+            "enabled": true
+          },
+          "otherDeductionsRemark": {
+            "value": "string",
+            "enabled": true
+          }
+        }
+      }
+    ]
+  }
+}
+
+so as you can see the fields are here
+
+we can retrieve the salary of the employee, and let me give you an example
+
+- Tarun's monthly salary is 11032
+- Basic Duty (This will be taken while onboarding a company, each company has different Basic Duty (24, 25, 26, 27, 28, 29, 30, 31).. you can get it from the salary template) (Basic Duty example: 26)
+- Duty Done (The input will be coming from admin.. where the admin marks the number of duty Tarun has done. Example: 29 (including night duty))
+- Wages per day (If the field is available, then it will be autofilled by monthly salary/basic duty which is 11032/26 = 424.3)
+- Basic Pay (This will be wages per day * duty done ==> 424.3*29 = 12304.7)
+- EPF wages (this is there to let the admin know that EPF will be deducted on the basic duty only so here the value will be 11032 (i.e., the salary will be counted officially for basic duty only mentioned by the company initially))
+- Bonus (If there is a field Bonus enabled by the company, then the bonus percentage should be 8.33% of the monthly salary which is 919 here and by default value 0)
+- Gross salary (Basic pay + Bonus = 12304.7+919 = 13224)
+- PF @12% (if enabled, Basic pay * 12% = 1477)
+- ESIC @0.75 (if enabled, Gross salary * 0.75% = 99)
+- Advance and Uniform (If these two are enabled, the default value will be 0 and the admin will enter if there is any for any employee)
+- Penalty (if enabled, default is 0 and is also optional by the admin for individual employee)
+- LWF (If enabled, default value is 10)
+PF, ESIC, ADVANCE, UNIFORM, PENALTY, LWF (they all come under deductions)
+- Other deductions (if enabled, the default value is 0, is also as per employee)
+- Other deductions remark (string value to give the reason for other deductions)
+- Allowance and allowance remark (allowance if enabled, default is 0, and will be used as per employee and the remark to give it the reason)
+- Total deductions (Add all the deductions)
+- Net salary (Gross salary - total duductions = 11638)
+
+
+update this with the apis below
+
+you can get user departments using this api 
+
+http://localhost:3003/departments/user-departments
+
+{
+  "statusCode": 200,
+  "message": "Departments fetched successfully!",
+  "data": [
+    {
+      "id": "a3ef36e8-465c-403a-8696-120a22a18600",
+      "name": "HR"
+    },
+    {
+      "id": "b9af8b86-8df2-473e-bf88-53a2dde5ca1f",
+      "name": "OPERATIONS"
+    },
+    {
+      "id": "4ca10568-60d0-44da-99d3-d8ee28ec5a03",
+      "name": "ACCOUNTS"
+    },
+    {
+      "id": "c9744067-652b-4478-8d59-bdae571fef99",
+      "name": "FIELD"
+    },
+    {
+      "id": "3867a70f-f438-4222-8b9a-f9d57287b348",
+      "name": "ADMIN"
+    }
+  ]
+}
+
+you can get the roles of the user from this
+
+export enum Role {
+    HR = 'HR',
+    OPERATIONS = 'OPERATIONS',
+    ACCOUNTS = 'ACCOUNTS',
+    FIELD = 'FIELD',
+    ADMIN = 'ADMIN',
+    USER = 'USER',
+  }
+
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEmail,
+  MinLength,
+  MaxLength,
+  IsEnum,
+  IsOptional,
+} from 'class-validator';
+import { Role } from '../enum/roles.enum';
+
+export class RegisterDto {
+  @IsNotEmpty()
+  @IsString()
+  @ApiProperty()
+  name: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(10)
+  @MaxLength(10)
+  @ApiProperty()
+  mobileNumber: string;
+
+  @IsNotEmpty()
+  @IsEmail()
+  @ApiProperty()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(6)
+  @MaxLength(20)
+  @ApiProperty()
+  password: string;
+
+  @IsOptional()
+  @IsEnum(Role)
+  @ApiProperty({
+    enum: Role,
+    enumName: 'Role',
+    description: 'User role',
+    default: Role.USER,
+  })
+  role: Role = Role.USER;
+
+  @IsNotEmpty()
+  @IsString()
+  @ApiProperty()
+  departmentId: string;
+}this is the register dto from the backend for reference
+
+http://localhost:3003/users/register
+this is the register api with payload 
+
+{
+  "name": "Tarun Vadde",
+  "mobileNumber": "9515764702",
+  "email": "tarun@soulverse.us",
+  "password": "tarunvadde461",
+  "role": "ADMIN",
+  "departmentId": "3867a70f-f438-4222-8b9a-f9d57287b348"
+}
+
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3MWE5ZDE1OC1hYmU5LTQ5ZTQtYWZlMS1kNTg2NThmOTUxY2UiLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3MjA4NTUwMTcsImV4cCI6MTcyMDg1ODYxN30.-fbeM_cGzP6M1KBmUQeQLbGuzYqeTaiGT0YotIJTlSE",
+  "refreshToken": "bec25e5a-a68a-4ae2-bad3-503b07a4e1cf"
+}
+
+http://localhost:3003/users/login
+{
+  "email": "tarun2@soulverse.us",
+  "password": "tarunvadde461"
+}
+
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3YmNkMGIwYS1iOGRlLTRkODYtOTk2Yy1mOTU2ODQ0MDRiYjQiLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3MjA4NTU0NjcsImV4cCI6MTcyMDg1OTA2N30.yValGLSgRsDEbTpmW8mVlG3YNB3hgqfCTpypz-m_3ag",
+  "refreshToken": "0d9d2ec0-cf12-4ccf-8458-eba28bb6b382"
+}
+
+below is to refresh the token
+http://localhost:3003/users/refresh-token/0d9d2ec0-cf12-4ccf-8458-eba28bb6b382
+
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3YmNkMGIwYS1iOGRlLTRkODYtOTk2Yy1mOTU2ODQ0MDRiYjQiLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3MjA4NTU0OTUsImV4cCI6MTcyMDg1OTA5NX0.saycfBe3DiqjLC3MUywVt2EPCeUXbcooyIgdej4Ivlk",
+  "refreshToken": "17d46131-b53b-4af3-991d-4b78a7d008cd"
+}
+
+{
+  "email": "tarun2@soulverse.us"
+}
+
+this is for forgot password 
+http://localhost:3003/users/forgot-password
+
+{
+  "status": 200,
+  "message": "Email sent!"
+}
+
+and below is the email i get with a link 
+
+You recently requested to reset your password.
+
+Please click on the following link to reset your password:
+
+http://localhost:3000/users/reset-password?token=_f3V8il1dM29tqptZOlyotMVrp_ilsb03c6TuuQb8aKdVZH5jtc4DN6nkLBhAtWa
+
+This link will expire in 1 hour.
+
+If you did not request a password reset, please ignore this email and your password will remain unchanged.
+
+which i want to handle
+
+{
+  "resetToken": "string",
+  "newPassword": "string"
+}
+
+http://localhost:3003/users/reset-password
