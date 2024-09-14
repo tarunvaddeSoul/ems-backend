@@ -1,320 +1,252 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type, Transform } from 'class-transformer';
-import { IsOptional, IsString, IsNumber, IsEnum, IsInt, IsPositive, Matches } from 'class-validator';
-import { Category, EducationQualification, Gender, Status, Title } from '../enum/employee.enum';
-import { IsDateFormat } from '../../common/validators/date-format.decorator';
+import { IsOptional, IsString, IsInt, IsEnum } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Title, Gender, Status, Category } from '@prisma/client';
+import { Transform } from 'class-transformer';
 
 export class UpdateEmployeeDto {
-  @ApiProperty({ enum: Title, required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsEnum(Title)
   title?: Title;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
   firstName?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
   lastName?: string;
 
-  @ApiProperty({ enum: Status })
+  @ApiPropertyOptional()
   @IsOptional()
-  @IsEnum(Status)
-  status: Status;
-
-  // @ApiProperty({ type: 'string', required: false })
-  // @IsOptional()
-  // @IsString()
-  // designationId?: string;
-
-  // @ApiProperty({ type: 'string', required: false })
-  // @IsOptional()
-  // @IsString()
-  // departmentId?: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  mobileNumber?: string;
+  dateOfBirth?: string;
 
-  // @ApiProperty({ type: 'string', required: false })
-  // @IsOptional()
-  // @IsString()
-  // @Transform(({ value }) => value?.toUpperCase())
-  // companyName?: string;
-
-  // @ApiProperty({ type: 'string', required: false })
-  // @IsOptional()
-  // @IsString()
-  // companyId?: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  currentCompanyId: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  currentCompanyDesignationId: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  currentCompanyDepartmentId: string;
-
-  @ApiProperty({ type: 'number', required: false })
-  @IsOptional()
-  @IsNumber()
-  @IsPositive()
-  @Type(() => Number)
-  currentCompanySalary: number;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @IsDateFormat({ message: 'currentJoiningDate must be in the format DD-MM-YYYY' })
-  currentCompanyJoiningDate: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  recruitedBy?: string;
-
-  @ApiProperty({ enum: Gender, required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsEnum(Gender)
   gender?: Gender;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
   fatherName?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
   motherName?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
   husbandName?: string;
 
-  @ApiProperty({ enum: Category, required: false })
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }) => value.toUpperCase())
+  @IsString()
+  bloodGroup?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  employeeOnboardingDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  employeeRelievingDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEnum(Status)
+  status?: Status;
+
+  @ApiPropertyOptional()
   @IsOptional()
   @IsEnum(Category)
   category?: Category;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsOptional()
   @IsString()
-  @IsString()
-  @IsDateFormat({ message: 'dateOfBirth must be in the format DD-MM-YYYY' })
-  dateOfBirth?: string;
+  recruitedBy?: string;
 
-  @ApiProperty({ type: 'number', required: false })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  age?: number;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @IsDateFormat({ message: 'employeeOnboardingDate must be in the format DD-MM-YYYY' })
-  employeeOnboardingDate: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @IsDateFormat({ message: 'employeeRelievingDate must be in the format DD-MM-YYYY' })
-  employeeRelievingDate: string;
-
-  @ApiProperty({ enum: EducationQualification, required: false })
-  @IsOptional()
-  @IsEnum(EducationQualification)
-  highestEducationQualification?: EducationQualification;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  bloodGroup?: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  permanentAddress?: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  presentAddress?: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  city?: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  district?: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  state?: string;
-
-  @ApiProperty({ type: 'number', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsInt()
-  @IsPositive()
-  @Type(() => Number)
-  pincode: number;
+  age?: number;
+}
 
-  @ApiProperty({ type: 'string', required: false })
+export class UpdateEmployeeContactDetailsDto {
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  referenceName?: string;
+  mobileNumber?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  referenceAddress?: string;
+  aadhaarNumber?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }) => value.toUpperCase())
+  @IsString()
+  permanentAddress?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }) => value.toUpperCase())
+  @IsString()
+  presentAddress?: string;
+
+  @ApiPropertyOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  referenceNumber?: string;
+  city?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
+  district?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }) => value.toUpperCase())
+  @IsString()
+  state?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  pincode?: number;
+}
+
+export class UpdateEmployeeBankDetailsDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   bankAccountNumber?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
   ifscCode?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  bankCity?: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
   bankName?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
+  bankCity?: string;
+}
+
+export class UpdateEmployeeAdditionalDetailsDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   pfUanNumber?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
   esicNumber?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
   policeVerificationNumber?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @IsString()
-  @IsDateFormat({ message: 'dateOfBirth must be in the format DD-MM-YYYY' })
   policeVerificationDate?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
   trainingCertificateNumber?: string;
 
-  @ApiProperty({ type: 'Date', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @IsDateFormat({ message: 'dateOfBirth must be in the format DD-MM-YYYY' })
   trainingCertificateDate?: string;
 
-  @ApiProperty({ type: 'string', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
   medicalCertificateNumber?: string;
 
-  @ApiProperty({ type: 'Date', required: false })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @IsDateFormat({ message: 'dateOfBirth must be in the format DD-MM-YYYY' })
   medicalCertificateDate?: string;
+}
 
-  @ApiProperty({ type: 'string', format: 'binary', required: false })
+export class UpdateEmployeeReferenceDetailsDto {
+  @ApiPropertyOptional()
+  @Transform(({ value }) => value.toUpperCase())
+  @IsOptional()
+  @IsString()
+  referenceName?: string;
+
+  @ApiPropertyOptional()
+  @Transform(({ value }) => value.toUpperCase())
+  @IsOptional()
+  @IsString()
+  referenceAddress?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  referenceNumber?: string;
+}
+
+export class UpdateEmployeeDocumentUploadsDto {
+  @ApiPropertyOptional({ type: 'string', format: 'binary' })
   @IsOptional()
   photo?: Express.Multer.File;
 
-  @ApiProperty({ type: 'string', format: 'binary', required: false })
+  @ApiPropertyOptional({ type: 'string', format: 'binary' })
   @IsOptional()
   aadhaar?: Express.Multer.File;
 
-  @ApiProperty({ type: 'string', format: 'binary', required: false })
+  @ApiPropertyOptional({ type: 'string', format: 'binary' })
   @IsOptional()
-  panCardUpload?: Express.Multer.File;
+  panCard?: Express.Multer.File;
 
-  @ApiProperty({ type: 'string', format: 'binary', required: false })
+  @ApiPropertyOptional({ type: 'string', format: 'binary' })
   @IsOptional()
   bankPassbook?: Express.Multer.File;
 
-  @ApiProperty({ type: 'string', format: 'binary', required: false })
+  @ApiPropertyOptional({ type: 'string', format: 'binary' })
   @IsOptional()
   markSheet?: Express.Multer.File;
 
-  @ApiProperty({ type: 'string', format: 'binary', required: false })
+  @ApiPropertyOptional({ type: 'string', format: 'binary' })
   @IsOptional()
   otherDocument?: Express.Multer.File;
 
-  @ApiProperty({ type: 'number', required: false })
+  @ApiPropertyOptional()
+  @Transform(({ value }) => value.toUpperCase())
   @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  salary?: number;
-
-  @ApiProperty({ type: 'string', required: false })
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => value?.toUpperCase())
-  aadhaarNumber?: string;
-
-  companyName?: string;
+  otherDocumentRemarks?: string;
 }

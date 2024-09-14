@@ -20,6 +20,7 @@ import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { DeleteCompaniesDto } from './dto/delete-companies.dto';
 import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
 import { CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
+import { GetEmployeesResponseDto } from './dto/get-employees-response.dto';
 
 @Controller('companies')
 @UseInterceptors(TransformInterceptor)
@@ -59,6 +60,15 @@ export class CompanyController {
   @ApiResponse({ status: 404, description: 'Company not found.' })
   async updateCompany(@Param('id') id: string, @Body() data: UpdateCompanyDto) {
     return this.companyService.updateCompany(id, data);
+  }
+
+  @Get(':companyId/employees')
+  @ApiResponse({ status: 200, type: [GetEmployeesResponseDto] })
+  async getEmployeesInACompany(@Param('companyId') companyId: string): Promise<{
+    message: string;
+    data: GetEmployeesResponseDto[];
+}> {
+    return this.companyService.getEmployeesInACompany(companyId);
   }
 
   @HttpCode(HttpStatus.OK)

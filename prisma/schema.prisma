@@ -182,80 +182,134 @@ enum Title {
 }
 
 model Employee {
-  id                            String                 @id @default(dbgenerated("concat('TSS', lpad(floor(random() * 10000)::text, 4, '0'))"))
-  title                         Title
-  firstName                     String
-  lastName                      String
-  mobileNumber                  String
-  gender                        Gender
-  fatherName                    String
-  motherName                    String
-  husbandName                   String?
-  category                      Category
-  dateOfBirth                   String
-  employeeOnboardingDate        String
-  employeeRelievingDate         String?
-  status                        Status
-  recruitedBy                   String
-  age                           Int                    @default(0)
-  highestEducationQualification EducationQualification
-  bloodGroup                    String
-  permanentAddress              String
-  presentAddress                String
-  city                          String
-  district                      String
-  state                         String
-  pincode                       Int
-  referenceName                 String
-  referenceAddress              String
-  referenceNumber               String
-  bankAccountNumber             String
-  ifscCode                      String
-  bankCity                      String
-  bankName                      String
-  pfUanNumber                   String
-  esicNumber                    String
-  policeVerificationNumber      String
-  policeVerificationDate        String
-  trainingCertificateNumber     String
-  trainingCertificateDate       String
-  medicalCertificateNumber      String
-  medicalCertificateDate        String
-  photoUpload                   String
-  aadhaarUpload                 String
-  panCardUpload                 String
-  bankPassbook                  String
-  markSheet                     String
-  otherDocument                 String
-  aadhaarNumber                 String
-  createdAt                     DateTime               @default(now())
-  updatedAt                     DateTime               @updatedAt
+  id                     String   @id @default(dbgenerated("concat('TSS', lpad(floor(random() * 10000)::text, 4, '0'))"))
+  title                  Title
+  firstName              String
+  lastName               String
+  dateOfBirth            String
+  gender                 Gender
+  fatherName             String
+  motherName             String
+  husbandName            String?
+  bloodGroup             String
+  employeeOnboardingDate String
+  employeeRelievingDate  String?
+  status                 Status
+  category               Category
+  recruitedBy            String
+  age                    Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
   // Relations
+  contactDetails      EmployeeContactDetails?
+  bankDetails         EmployeeBankDetails?
+  additionalDetails   EmployeeAdditionalDetails?
+  referenceDetails    EmployeeReferenceDetails?
+  documentUploads     EmployeeDocumentUploads?
   employmentHistories EmploymentHistory[]
   salaryRecords       SalaryRecord[]
   attendances         Attendance[]
   salaries            Salary[]
-
-  @@index([aadhaarNumber], name: "idx_aadhaarNumber")
-  @@index([mobileNumber], name: "idx_mobileNumber")
 }
 
 model EmploymentHistory {
-  id            String             @id @default(uuid())
-  employeeId    String
-  employee      Employee           @relation(fields: [employeeId], references: [id])
-  companyName   String
-  companyId     String
-  company       Company            @relation(fields: [companyId], references: [id])
-  designationId String
-  designation   Designation        @relation(fields: [designationId], references: [id])
-  departmentId  String
-  department    EmployeeDepartment @relation(fields: [departmentId], references: [id])
-  salary        Float
-  joiningDate   String
-  leavingDate   String?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  id              String             @id @default(uuid())
+  employeeId      String
+  employee        Employee           @relation(fields: [employeeId], references: [id])
+  companyName     String
+  designationName String
+  departmentName  String
+  companyId       String
+  company         Company            @relation(fields: [companyId], references: [id])
+  designationId   String
+  designation     Designation        @relation(fields: [designationId], references: [id])
+  departmentId    String
+  department      EmployeeDepartment @relation(fields: [departmentId], references: [id])
+  salary          Float
+  joiningDate     String
+  leavingDate     String?
+  status          String
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model EmployeeContactDetails {
+  id                String   @id @default(uuid())
+  employeeId        String   @unique
+  mobileNumber      String
+  aadhaarNumber     String
+  permanentAddress  String
+  presentAddress    String
+  city              String
+  district          String
+  state             String
+  pincode           Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  employee          Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([mobileNumber])
+  @@index([aadhaarNumber])
+}
+
+model EmployeeBankDetails {
+  id                String   @id @default(uuid())
+  employeeId        String   @unique
+  bankAccountNumber String
+  ifscCode          String
+  bankName          String
+  bankCity          String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  employee          Employee @relation(fields: [employeeId], references: [id])
+}
+
+model EmployeeAdditionalDetails {
+  id                        String   @id @default(uuid())
+  employeeId                String   @unique
+  pfUanNumber               String
+  esicNumber                String
+  policeVerificationNumber  String
+  policeVerificationDate    String
+  trainingCertificateNumber String
+  trainingCertificateDate   String
+  medicalCertificateNumber  String
+  medicalCertificateDate    String
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  employee                  Employee @relation(fields: [employeeId], references: [id])
+}
+
+model EmployeeReferenceDetails {
+  id               String   @id @default(uuid())
+  employeeId       String   @unique
+  referenceName    String
+  referenceAddress String
+  referenceNumber  String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  employee         Employee @relation(fields: [employeeId], references: [id])
+}
+
+model EmployeeDocumentUploads {
+  id                  String   @id @default(uuid())
+  employeeId          String   @unique
+  photo         String
+  aadhaar       String
+  panCard       String
+  bankPassbook        String
+  markSheet           String
+  otherDocument       String
+  otherDocumentRemarks String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  employee            Employee @relation(fields: [employeeId], references: [id])
 }
 
 model Attendance {
@@ -290,12 +344,11 @@ model AttendanceSheet {
 //   company    Company  @relation(fields: [companyId], references: [id])
 // }
 
-
 model Salary {
   id                    String   @id @default(uuid())
   employeeId            String
   companyId             String
-  month                 String   // Format: MM-YYYY
+  month                 String // Format: MM-YYYY
   monthlySalary         Float
   dutyDone              Int
   wagesPerDay           Float

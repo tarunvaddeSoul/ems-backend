@@ -63,6 +63,26 @@ export class CompanyService {
     }
   }
 
+  async getEmployeesInACompany(companyId: string) {
+    try {
+      const company = await this.companyRepository.findById(companyId);
+      if (!company) {
+        throw new NotFoundException(`Company with id: ${companyId} does not exist.`);
+      }
+      const getEmployeesInACompanyResponse = await this.companyRepository.getEmployeesInACompany(companyId);
+      if (getEmployeesInACompanyResponse.length === 0) {
+        throw new NotFoundException(`No employee records found.`);
+      }
+      return {
+        message: 'Employees retrieved successfully',
+        data: getEmployeesInACompanyResponse,
+      };
+    } catch (error) {
+      this.logger.error(`Error retrieving employees`);
+      throw error;
+    }
+  }
+
   async getCompanyById(id: string) {
     try {
       const company = await this.companyRepository.findById(id);

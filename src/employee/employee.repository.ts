@@ -1,9 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Employee, EmploymentHistory } from '@prisma/client';
+import { Employee, EmployeeDocumentUploads, EmploymentHistory, Prisma } from '@prisma/client';
 import { IEmployee } from './interface/employee.interface';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { GetAllEmployeesDto } from './dto/get-all-employees.dto';
+import { Status } from './enum/employee.enum';
 
 @Injectable()
 export class EmployeeRepository {
@@ -11,146 +18,312 @@ export class EmployeeRepository {
 
   async createEmployee(data: IEmployee): Promise<any> {
     try {
-      const employeeData: any = {
-        id: data.id,
-        title: data.title,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        mobileNumber: data.mobileNumber,
-        recruitedBy: data.recruitedBy,
-        gender: data.gender,
-        status: data.status,
-        fatherName: data.fatherName,
-        motherName: data.motherName,
-        husbandName: data.husbandName,
-        category: data.category,
-        dateOfBirth: data.dateOfBirth,
-        age: data.age,
-        employeeOnboardingDate: data.employeeOnboardingDate,
-        highestEducationQualification: data.highestEducationQualification,
-        bloodGroup: data.bloodGroup,
-        permanentAddress: data.permanentAddress,
-        presentAddress: data.presentAddress,
-        city: data.city,
-        district: data.district,
-        state: data.state,
-        pincode: data.pincode,
-        referenceName: data.referenceName,
-        referenceAddress: data.referenceAddress,
-        referenceNumber: data.referenceNumber,
-        bankAccountNumber: data.bankAccountNumber,
-        ifscCode: data.ifscCode,
-        bankCity: data.bankCity,
-        bankName: data.bankName,
-        pfUanNumber: data.pfUanNumber,
-        esicNumber: data.esicNumber,
-        policeVerificationNumber: data.policeVerificationNumber,
-        policeVerificationDate: data.policeVerificationDate,
-        trainingCertificateNumber: data.trainingCertificateNumber,
-        trainingCertificateDate: data.trainingCertificateDate,
-        medicalCertificateNumber: data.medicalCertificateNumber,
-        medicalCertificateDate: data.medicalCertificateDate,
-        photoUpload: data.photoUpload,
-        aadhaarUpload: data.aadhaarUpload,
-        panCardUpload: data.panCardUpload,
-        bankPassbook: data.bankPassbook,
-        markSheet: data.markSheet,
-        otherDocument: data.otherDocument,
-        aadhaarNumber: data.aadhaarNumber,
-      };
+      const result = await this.prisma.$transaction(async (prisma) => {
+        // Create the main employee record
+        const employeeResponse = await prisma.employee.create({
+          data: {
+            id: data.id,
+            title: data.title,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            dateOfBirth: data.dateOfBirth,
+            gender: data.gender,
+            fatherName: data.fatherName,
+            motherName: data.motherName,
+            husbandName: data.husbandName,
+            bloodGroup: data.bloodGroup,
+            employeeOnboardingDate: data.employeeOnboardingDate,
+            status: data.status,
+            category: data.category,
+            recruitedBy: data.recruitedBy,
+            age: data.age,
+          },
+        });
 
-    const result = await this.prisma.$transaction(async (prisma) => {
-      // Create the employee
-      const employeeResponse = await prisma.employee.create({
-        data: employeeData,
-      });
-
-      // If company information is provided, create an employment history entry
-      if (data.currentCompanyId) {
-        employeeData.currentCompanyId = data.currentCompanyId;
-        employeeData.currentCompanyName = data.currentCompanyName;
-        employeeData.currentCompanyDepartmentId = data.currentCompanyDepartmentId;
-        employeeData.currentCompanyEmployeeDepartmentName = data.currentCompanyEmployeeDepartmentName;
-        employeeData.currentCompanyDesignationId = data.currentCompanyDesignationId;
-        employeeData.currentCompanyEmployeeDesignationName = data.currentCompanyEmployeeDesignationName;
-        employeeData.currentCompanySalary = data.currentCompanySalary;
-        employeeData.currentCompanyJoiningDate = data.currentCompanyJoiningDate;
-
-        await prisma.employmentHistory.create({
+        // Create employee contact details
+        await prisma.employeeContactDetails.create({
           data: {
             employeeId: employeeResponse.id,
-            companyId: data.currentCompanyId,
-            designationId: data.currentCompanyDesignationId,
-            departmentId: data.currentCompanyDepartmentId,
-            salary: data.currentCompanySalary,
-            joiningDate: data.currentCompanyJoiningDate,
-            companyName: data.currentCompanyName,
-          }
+            mobileNumber: data.mobileNumber,
+            aadhaarNumber: data.aadhaarNumber,
+            permanentAddress: data.permanentAddress,
+            presentAddress: data.presentAddress,
+            city: data.city,
+            district: data.district,
+            state: data.state,
+            pincode: data.pincode,
+          },
         });
-      }
 
-      return employeeResponse;
-    });
+        // Create employee bank details
+        await prisma.employeeBankDetails.create({
+          data: {
+            employeeId: employeeResponse.id,
+            bankAccountNumber: data.bankAccountNumber,
+            ifscCode: data.ifscCode,
+            bankName: data.bankName,
+            bankCity: data.bankCity,
+          },
+        });
 
-    return result;
+        // Create employee additional details
+        await prisma.employeeAdditionalDetails.create({
+          data: {
+            employeeId: employeeResponse.id,
+            pfUanNumber: data.pfUanNumber,
+            esicNumber: data.esicNumber,
+            policeVerificationNumber: data.policeVerificationNumber,
+            policeVerificationDate: data.policeVerificationDate,
+            trainingCertificateNumber: data.trainingCertificateNumber,
+            trainingCertificateDate: data.trainingCertificateDate,
+            medicalCertificateNumber: data.medicalCertificateNumber,
+            medicalCertificateDate: data.medicalCertificateDate,
+          },
+        });
+
+        // Create employee reference details
+        await prisma.employeeReferenceDetails.create({
+          data: {
+            employeeId: employeeResponse.id,
+            referenceName: data.referenceName,
+            referenceAddress: data.referenceAddress,
+            referenceNumber: data.referenceNumber,
+          },
+        });
+
+        // Create employee document uploads
+        await prisma.employeeDocumentUploads.create({
+          data: {
+            employeeId: employeeResponse.id,
+            photo: data.photo,
+            aadhaar: data.aadhaar,
+            panCard: data.panCard,
+            bankPassbook: data.bankPassbook,
+            markSheet: data.markSheet,
+            otherDocument: data.otherDocument,
+            otherDocumentRemarks: data.otherDocumentRemarks,
+          },
+        });
+
+        // If company information is provided, create an employment history entry
+        if (data.currentCompanyId) {
+          await prisma.employmentHistory.create({
+            data: {
+              employeeId: employeeResponse.id,
+              companyId: data.currentCompanyId,
+              designationId: data.currentCompanyDesignationId,
+              departmentId: data.currentCompanyDepartmentId,
+              salary: data.currentCompanySalary,
+              joiningDate: data.currentCompanyJoiningDate,
+              companyName: data.currentCompanyName,
+              departmentName: data.currentCompanyEmployeeDepartmentName,
+              designationName: data.currentCompanyEmployeeDesignationName,
+              status: Status.ACTIVE,
+            },
+          });
+        }
+
+        return employeeResponse;
+      });
+
+      return result;
     } catch (error) {
       new Logger().debug(error.message);
       throw error;
     }
   }
 
-  async updateEmployee(id: string, data: Partial<Employee>): Promise<Employee> {
-    try {
-      return await this.prisma.employee.update({
-        where: { id },
+  async updateEmployee(
+    id: string,
+    data: Prisma.EmployeeUpdateInput,
+  ): Promise<Employee> {
+    return this.prisma.employee.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async updateEmployeeContactDetails(
+    employeeId: string,
+    data: any,
+  ) {
+    return this.prisma.employeeContactDetails.upsert({
+      where: { employeeId },
+      update: data,
+      create: { ...data, employeeId },
+    });
+  }
+
+  async updateEmployeeBankDetails(
+    employeeId: string,
+    data: any,
+  ) {
+    return this.prisma.employeeBankDetails.upsert({
+      where: { employeeId },
+      update: data,
+      create: { ...data, employeeId },
+    });
+  }
+
+  async updateEmployeeAdditionalDetails(
+    employeeId: string,
+    data: any,
+  ) {
+    return this.prisma.employeeAdditionalDetails.upsert({
+      where: { employeeId },
+      update: data,
+      create: { ...data, employeeId },
+    });
+  }
+
+  async updateEmployeeReferenceDetails(
+    employeeId: string,
+    data: any,
+  ) {
+    return this.prisma.employeeReferenceDetails.upsert({
+      where: { employeeId },
+      update: data,
+      create: { ...data, employeeId },
+    });
+  }
+
+  async updateEmployeeDocumentUploads(
+    employeeId: string,
+    data: Partial<Prisma.EmployeeDocumentUploadsUpdateInput>
+  ): Promise<EmployeeDocumentUploads> {
+    const existingRecord = await this.prisma.employeeDocumentUploads.findUnique({
+      where: { employeeId },
+    });
+
+    if (existingRecord) {
+      return this.prisma.employeeDocumentUploads.update({
+        where: { employeeId },
         data,
       });
-    } catch (error) {
-      throw error;
+    } else {
+      const createData: Prisma.EmployeeDocumentUploadsCreateInput = {
+        employee: { connect: { id: employeeId } },
+        photo: data.photo as string ?? '',
+        aadhaar: data.aadhaar as string ?? '',
+        panCard: data.panCard as string ?? '',
+        bankPassbook: data.bankPassbook as string ?? '',
+        markSheet: data.markSheet as string ?? '',
+        otherDocument: data.otherDocument as string ?? '',
+        otherDocumentRemarks: data.otherDocumentRemarks as string ?? '',
+      };
+      return this.prisma.employeeDocumentUploads.create({
+        data: createData,
+      });
     }
+  }
+
+  async updateEmploymentHistory(id: string, data: Prisma.EmploymentHistoryUpdateInput) {
+    const updateResponse = await this.prisma.employmentHistory.update({
+      where: { id },
+      data,
+    });
+    console.log(updateResponse)
+    return updateResponse;
+  }
+
+  async getEmploymentHistory(employeeId: string): Promise<EmploymentHistory[]> {
+    return this.prisma.employmentHistory.findMany({
+      where: { employeeId },
+      orderBy: { joiningDate: 'desc' },
+    });
+  }
+
+  async getCurrentEmploymentHistory(employeeId: string): Promise<EmploymentHistory | null> {
+    return this.prisma.employmentHistory.findFirst({
+      where: { 
+        employeeId,
+        leavingDate: null,
+      },
+      orderBy: { joiningDate: 'desc' },
+    });
   }
 
   async createEmploymentHistory(data: any): Promise<EmploymentHistory> {
     try {
       return await this.prisma.employmentHistory.create({ data });
     } catch (error) {
-      // this.logger.error(`Error creating employment history: ${error.message}`);
       throw error;
     }
   }
-  
+
   async closeCurrentEmploymentHistory(employeeId: string): Promise<void> {
     try {
       const now = new Date();
 
-      const formattedLeavingDate = new Intl.DateTimeFormat('en-GB').format(now).split('/').join('-'); // Formats date as DD-MM-YYYY
+      const formattedLeavingDate = new Intl.DateTimeFormat('en-GB')
+        .format(now)
+        .split('/')
+        .join('-'); // Formats date as DD-MM-YYYY
 
       await this.prisma.employmentHistory.updateMany({
-        where: { 
+        where: {
           employeeId,
-          leavingDate: null
+          leavingDate: null,
         },
-        data: { leavingDate: formattedLeavingDate },
+        data: { leavingDate: formattedLeavingDate, status: Status.INACTIVE },
       });
     } catch (error) {
-      // this.logger.error(`Error closing current employment history for employee ${employeeId}: ${error.message}`);
       throw error;
     }
+  }
+
+  async updateCurrentEmploymentHistory(
+    id: string,
+    data: Partial<EmploymentHistory>,
+  ): Promise<EmploymentHistory> {
+    return this.prisma.employmentHistory.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async getEmployeeDocumentUploads(employeeId: string): Promise<EmployeeDocumentUploads | null> {
+    return this.prisma.employeeDocumentUploads.findUnique({
+      where: { employeeId },
+    });
+  }
+
+
+  async findActiveByEmployeeId(
+    employeeId: string,
+  ): Promise<EmploymentHistory | null> {
+    return this.prisma.employmentHistory.findFirst({
+      where: {
+        employeeId,
+        status: Status.ACTIVE,
+      },
+      include: {
+        company: true,
+        designation: true,
+        department: true,
+      },
+    });
   }
 
   async getEmployeeById(id: string) {
     try {
       const employeeResponse = await this.prisma.employee.findUnique({
         where: { id },
-        select: {
-          employmentHistories: true
-        }
+        include: {
+          contactDetails: true,
+          bankDetails: true,
+          additionalDetails: true,
+          referenceDetails: true,
+          documentUploads: true,
+          employmentHistories: true,
+        },
       });
       return employeeResponse;
     } catch (error) {
       return error;
     }
   }
+
   async findByIdWithCurrentEmployment(id: string): Promise<Employee | null> {
     try {
       return await this.prisma.employee.findUnique({
@@ -184,19 +357,6 @@ export class EmployeeRepository {
     }
   }
 
-  async getEmploymentHistory(employeeId: string) {
-    try {
-      const employementHistory = await this.prisma.employmentHistory.findMany({
-        where: {
-          employeeId,
-        }
-      });
-      return employementHistory;
-    } catch (error) {
-      return error;
-    }
-  }
-
   async getAllEmployees(params: GetAllEmployeesDto) {
     try {
       const {
@@ -216,8 +376,9 @@ export class EmployeeRepository {
         startDate,
         endDate,
       } = params;
-  
+
       const where: any = {};
+
       if (searchText) {
         where.OR = [
           { firstName: { contains: searchText, mode: 'insensitive' } },
@@ -225,28 +386,51 @@ export class EmployeeRepository {
           { id: { contains: searchText, mode: 'insensitive' } },
         ];
       }
-      if (designationId) where.designationId = designationId;
-      if (employeeDepartmentId) where.employeeDepartmentId = employeeDepartmentId;
-      if (companyId) where.companyId = companyId;
       if (gender) where.gender = gender;
       if (category) where.category = category;
-      if (highestEducationQualification) where.highestEducationQualification = highestEducationQualification;
+      if (highestEducationQualification)
+        where.highestEducationQualification = highestEducationQualification;
       if (minAge || maxAge) {
         where.age = {};
         if (minAge) where.age.gte = minAge;
         if (maxAge) where.age.lte = maxAge;
       }
-      if (startDate || endDate) {
-        where.dateOfJoining = {};
-        if (startDate) where.dateOfJoining.gte = startDate;
-        if (endDate) where.dateOfJoining.lte = endDate;
+
+      // Employment history filters
+      if (
+        designationId ||
+        employeeDepartmentId ||
+        companyId ||
+        startDate ||
+        endDate
+      ) {
+        where.employmentHistories = {
+          some: {
+            AND: [
+              designationId ? { designationId } : {},
+              employeeDepartmentId
+                ? { departmentId: employeeDepartmentId }
+                : {},
+              companyId ? { companyId } : {},
+              startDate || endDate
+                ? {
+                    OR: [
+                      { leavingDate: null },
+                      { leavingDate: { gte: startDate || undefined } },
+                    ],
+                    joiningDate: { lte: endDate || undefined },
+                  }
+                : {},
+            ],
+          },
+        };
       }
-  
+
       const orderBy: any = {};
       if (sortBy) {
         orderBy[sortBy] = sortOrder || 'asc';
       }
-  
+
       const [data, total] = await Promise.all([
         this.prisma.employee.findMany({
           where,
@@ -256,7 +440,6 @@ export class EmployeeRepository {
           include: {
             employmentHistories: {
               orderBy: { joiningDate: 'desc' },
-              take: 1,
               include: {
                 company: true,
                 designation: true,
@@ -267,15 +450,13 @@ export class EmployeeRepository {
         }),
         this.prisma.employee.count({ where }),
       ]);
-  
+
       return { data, total };
     } catch (error) {
       console.error(error);
       return error;
     }
   }
-  
-  
 
   async deleteEmployeeById(id: string) {
     try {

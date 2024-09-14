@@ -22,25 +22,10 @@ export class CreateEmployeeDto {
   @Transform(({ value }) => value.toUpperCase())
   lastName: string;
 
-  // @ApiProperty({ type: 'string' })
-  // @IsNotEmpty()
-  // @IsString()
-  // designationId: string;
-
-  // @ApiProperty({ type: 'string' })
-  // @IsNotEmpty()
-  // @IsString()
-  // employeeDepartmentId: string;
-
   @ApiProperty({ type: 'string' })
   @IsNotEmpty()
   @IsString()
   mobileNumber: string;
-
-  // @ApiProperty({ type: 'string' })
-  // @IsNotEmpty()
-  // @IsString()
-  // companyId: string;
 
   @ApiProperty({ type: 'string' })
   @IsNotEmpty()
@@ -232,13 +217,6 @@ export class CreateEmployeeDto {
   @IsDateFormat({ message: 'medicalCertificateDate must be in the format DD-MM-YYYY' })
   medicalCertificateDate: string;
 
-  // @ApiProperty({ type: 'number' })
-  // @IsNotEmpty()
-  // @IsInt()
-  // @IsPositive()
-  // @Type(() => Number)
-  // salary: number;
-
   @ApiProperty({ type: 'string' })
   @IsOptional()
   @IsString()
@@ -280,7 +258,7 @@ export class CreateEmployeeDto {
   aadhaar?: Express.Multer.File;
 
   @ApiProperty({ type: 'string', format: 'binary', required: false })
-  panCardUpload?: Express.Multer.File;
+  panCard?: Express.Multer.File;
 
   @ApiProperty({ type: 'string', format: 'binary', required: false })
   bankPassbook?: Express.Multer.File;
@@ -290,4 +268,10 @@ export class CreateEmployeeDto {
 
   @ApiProperty({ type: 'string', format: 'binary', required: false })
   otherDocument?: Express.Multer.File;
+
+  @ApiProperty({ type: 'string' })
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value.toUpperCase())
+  otherDocumentRemarks?: string;
 }

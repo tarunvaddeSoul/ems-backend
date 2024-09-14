@@ -11,8 +11,9 @@ import {
   HttpCode,
   HttpStatus,
   Delete,
-  BadRequestException,
   Query,
+  HttpException,
+  Patch,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { EmployeeService } from './employee.service';
@@ -22,12 +23,15 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBody,
+  ApiParam,
 } from '@nestjs/swagger';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
-import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { UpdateEmployeeAdditionalDetailsDto, UpdateEmployeeBankDetailsDto, UpdateEmployeeContactDetailsDto, UpdateEmployeeDocumentUploadsDto, UpdateEmployeeDto, UpdateEmployeeReferenceDetailsDto } from './dto/update-employee.dto';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { DeleteEmployeesDto } from './dto/delete-employees.dto';
 import { GetAllEmployeesDto } from './dto/get-all-employees.dto';
+import { Employee, EmployeeDocumentUploads, EmploymentHistory } from '@prisma/client';
+import { CreateEmploymentHistoryDto, LeavingDateDto, UpdateEmploymentHistoryDto } from './dto/employment-history.dto';
 
 @Controller('employees')
 @UseInterceptors(TransformInterceptor)
@@ -83,74 +87,132 @@ export class EmployeeController {
     );
   }
 
-  @Put(':id')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Update Employee',
-    description:
-      'Updates an existing employee by ID and optionally uploads new photo and aadhaar files to S3.',
-  })
-  @ApiConsumes('multipart/form-data')
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update an employee' })
   @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Employee updated successfully.',
+    status: 200,
+    description: 'The employee has been successfully updated.',
   })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Employee not found.',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid input data.',
-  })
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'photo', maxCount: 1 },
-      { name: 'aadhaar', maxCount: 1 },
-      { name: 'panCardUpload', maxCount: 1 },
-      { name: 'bankPassbook', maxCount: 1 },
-      { name: 'markSheet', maxCount: 1 },
-      { name: 'otherDocument', maxCount: 1 },
-    ]),
-  )
+  @ApiResponse({ status: 404, description: 'Employee not found.' })
   async updateEmployee(
     @Param('id') id: string,
-    @Body() data: UpdateEmployeeDto,
-    @UploadedFiles()
-    files: {
-      photo?: Express.Multer.File[];
-      aadhaar?: Express.Multer.File[];
-      panCardUpload?: Express.Multer.File[];
-      bankPassbook?: Express.Multer.File[];
-      markSheet?: Express.Multer.File[];
-      otherDocument?: Express.Multer.File[];
-    },
+    @Body() updateEmployeeDto: UpdateEmployeeDto,
+  ): Promise<{ message: string; data: Employee }> {
+    return this.employeeService.updateEmployee(id, updateEmployeeDto);
+  }
+
+  @Patch(':id/contact-details')
+  @ApiOperation({ summary: 'Update employee contact details' })
+  @ApiResponse({ status: 200, description: 'The employee contact details have been successfully updated.' })
+  async updateEmployeeContactDetails(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateEmployeeContactDetailsDto,
   ) {
-    const hasFiles =
-      files.photo?.length > 0 ||
-      files.aadhaar?.length > 0 ||
-      files.panCardUpload?.length > 0 ||
-      files.bankPassbook?.length > 0 ||
-      files.markSheet?.length > 0 ||
-      files.otherDocument?.length > 0;
+    return this.employeeService.updateEmployeeContactDetails(id, updateDto);
+  }
 
-    // Check if at least one property must be provided for update.
-    const hasUpdateData = Object.values(data).some((value) => value !== undefined && value !== null);
+  @Patch(':id/bank-details')
+  @ApiOperation({ summary: 'Update employee bank details' })
+  @ApiResponse({ status: 200, description: 'The employee bank details have been successfully updated.' })
+  async updateEmployeeBankDetails(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateEmployeeBankDetailsDto,
+  ) {
+    return this.employeeService.updateEmployeeBankDetails(id, updateDto);
+  }
 
-    if (!hasUpdateData && !hasFiles) {
-      throw new BadRequestException('At least one property must be provided for update.');
-    }
+  @Patch(':id/additional-details')
+  @ApiOperation({ summary: 'Update employee additional details' })
+  @ApiResponse({ status: 200, description: 'The employee additional details have been successfully updated.' })
+  async updateEmployeeAdditionalDetails(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateEmployeeAdditionalDetailsDto,
+  ) {
+    return this.employeeService.updateEmployeeAdditionalDetails(id, updateDto);
+  }
 
-    return this.employeeService.updateEmployee(
-      id,
-      data,
-      files.photo ? files.photo[0] : null,
-      files.aadhaar ? files.aadhaar[0] : null,
-      files.panCardUpload ? files.panCardUpload[0] : null,
-      files.bankPassbook ? files.bankPassbook[0] : null,
-      files.markSheet ? files.markSheet[0] : null,
-      files.otherDocument ? files.otherDocument[0] : null,
-    );
+  @Patch(':id/reference-details')
+  @ApiOperation({ summary: 'Update employee reference details' })
+  @ApiResponse({ status: 200, description: 'The employee reference details have been successfully updated.' })
+  async updateEmployeeReferenceDetails(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateEmployeeReferenceDetailsDto,
+  ) {
+    return this.employeeService.updateEmployeeReferenceDetails(id, updateDto);
+  }
+
+  @Patch(':id/document-uploads')
+  @ApiOperation({ summary: 'Update employee document uploads' })
+  @ApiResponse({ status: 200, description: 'The employee document uploads have been successfully updated.' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'photo', maxCount: 1 },
+    { name: 'aadhaar', maxCount: 1 },
+    { name: 'panCard', maxCount: 1 },
+    { name: 'bankPassbook', maxCount: 1 },
+    { name: 'markSheet', maxCount: 1 },
+    { name: 'otherDocument', maxCount: 1 },
+  ]))
+  async updateEmployeeDocumentUploads(
+    @Param('id') id: string,
+    @UploadedFiles() files: {
+      photo?: Express.Multer.File[],
+      aadhaar?: Express.Multer.File[],
+      panCard?: Express.Multer.File[],
+      bankPassbook?: Express.Multer.File[],
+      markSheet?: Express.Multer.File[],
+      otherDocument?: Express.Multer.File[],
+    },
+    @Body() updateDto: UpdateEmployeeDocumentUploadsDto,
+  ): Promise<{ message: string; data: EmployeeDocumentUploads }> {
+    const updatedDto = {
+      ...updateDto,
+      photo: files.photo?.[0],
+      aadhaar: files.aadhaar?.[0],
+      panCard: files.panCard?.[0],
+      bankPassbook: files.bankPassbook?.[0],
+      markSheet: files.markSheet?.[0],
+      otherDocument: files.otherDocument?.[0],
+    };
+    return this.employeeService.updateEmployeeDocumentUploads(id, updatedDto);
+  }
+
+  @Post(':employeeId/employment-history')
+  @ApiOperation({ summary: 'Create a new employment history record' })
+  @ApiResponse({ status: 201, description: 'The employment history record has been successfully created.' })
+  async createEmploymentHistory(
+    @Param('employeeId') employeeId: string,
+    @Body() createDto: CreateEmploymentHistoryDto,
+  ): Promise<{ message: string; data: EmploymentHistory }> {
+    createDto.employeeId = employeeId;
+    return this.employeeService.createEmploymentHistory(createDto);
+  }
+
+  @Patch('employment-history/:id')
+  @ApiOperation({ summary: 'Update an employment history record' })
+  @ApiResponse({ status: 200, description: 'The employment history record has been successfully updated.' })
+  async updateEmploymentHistory(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateEmploymentHistoryDto,
+  ): Promise<{ message: string; data: EmploymentHistory }> {
+    return this.employeeService.updateEmploymentHistory(id, updateDto);
+  }
+
+  @Patch(':employeeId/close-employment')
+  @ApiOperation({ summary: 'Close the current employment record' })
+  @ApiResponse({ status: 200, description: 'The current employment record has been successfully closed.' })
+  async closeCurrentEmployment(
+    @Param('employeeId') employeeId: string,
+    @Body() data: LeavingDateDto,
+  ): Promise<{ message: string; data: EmploymentHistory }> {
+    return this.employeeService.closeCurrentEmployment(employeeId, data.leavingDate);
+  }
+
+  @Get(':id/employment-history')
+  @ApiOperation({ summary: 'Get employee\'s employment history' })
+  @ApiResponse({ status: 200, description: 'The employment history has been successfully retrieved.' })
+  async getEmploymentHistory(@Param('id') id: string) {
+    return this.employeeService.getEmploymentHistory(id);
   }
 
   @Get(':id')
@@ -171,22 +233,25 @@ export class EmployeeController {
     return this.employeeService.getEmployeeById(id);
   }
 
-  @Get('employment-history/:id')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Get Employment history by ID',
-    description: 'Retrieves the employment history details of an employee by their ID.',
-  })
+  @Get('active/:employeeId')
+  @ApiOperation({ summary: 'Get active employment for an employee' })
   @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Employee retrieved successfully.',
+    status: 200,
+    description: 'The active employment has been successfully retrieved.',
   })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Employee not found.',
-  })
-  async getEmploymentHistory(@Param('id') id: string) {
-    return this.employeeService.getEmploymentHistory(id);
+  @ApiResponse({ status: 404, description: 'No active employment found.' })
+  @ApiParam({ name: 'employeeId', description: 'Employee ID' })
+  async getActiveEmployment(@Param('employeeId') employeeId: string) {
+    const activeEmployment = await this.employeeService.getActiveEmployment(
+      employeeId,
+    );
+    if (!activeEmployment) {
+      throw new HttpException(
+        'No active employment found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return activeEmployment;
   }
 
   @Delete(':id')
@@ -224,7 +289,8 @@ export class EmployeeController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get All Employees',
-    description: 'Retrieves a list of employees with pagination, filtering, and sorting.',
+    description:
+      'Retrieves a list of employees with pagination, filtering, and sorting.',
   })
   @ApiResponse({
     status: HttpStatus.OK,

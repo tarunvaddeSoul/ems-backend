@@ -30,7 +30,7 @@ export interface IEmployee {
   dateOfBirth?: string;
   age?: number;
   employeeOnboardingDate?: string;
-  highestEducationQualification?: EducationQualification | $Enums.EducationQualification;
+  highestEducationQualification?: EducationQualification;
   bloodGroup?: string;
   permanentAddress?: string;
   presentAddress?: string;
@@ -53,12 +53,13 @@ export interface IEmployee {
   trainingCertificateDate?: string;
   medicalCertificateNumber?: string;
   medicalCertificateDate?: string;
-  photoUpload?: string;
-  aadhaarUpload?: string;
-  panCardUpload?: string;
+  photo?: string;
+  aadhaar?: string;
+  panCard?: string;
   bankPassbook?: string;
   markSheet?: string;
   otherDocument?: string;
+  otherDocumentRemarks?: string;
   salary?: number;
   aadhaarNumber?: string;
 }

@@ -10,6 +10,7 @@ import {
   UpdateCompanyDto,
 } from './dto/company.dto';
 import { plainToClass } from 'class-transformer';
+import { GetEmployeesResponseDto } from './dto/get-employees-response.dto';
 
 @Injectable()
 export class CompanyRepository {
@@ -131,6 +132,53 @@ export class CompanyRepository {
     }
   }
 
+  async getEmployeesInACompany(companyId: string): Promise<GetEmployeesResponseDto[]> {
+    try {
+      const employees = await this.prisma.employmentHistory.findMany({
+        where: {
+          companyId,
+        },
+        select: {
+          id: true,
+          employee: {
+            select: {
+              title: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          designation: {
+            select: {
+              name: true,
+            },
+          },
+          department: {
+            select: {
+              name: true,
+            },
+          },
+          salary: true,
+          joiningDate: true,
+          leavingDate: true,
+        },
+      });
+
+      return employees.map(employee => ({
+        id: employee.id,
+        title: employee.employee.title,
+        firstName: employee.employee.firstName,
+        lastName: employee.employee.lastName,
+        designation: employee.designation.name,
+        department: employee.department.name,
+        salary: employee.salary,
+        joiningDate: employee.joiningDate,
+        leavingDate: employee.leavingDate,
+      }));
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async findAll(query: GetAllCompaniesDto): Promise<{
     companies: Company[];
     total: number;
@@ -167,6 +215,9 @@ export class CompanyRepository {
         orderBy: {
           [sortBy]: sortOrder,
         },
+        include: {
+          salaryTemplates: true
+        }
       });
 
       const total = await this.prisma.company.count({ where });
