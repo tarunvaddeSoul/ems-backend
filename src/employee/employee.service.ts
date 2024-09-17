@@ -17,7 +17,11 @@ import {
 } from './dto/update-employee.dto';
 import {
   Employee,
+  EmployeeAdditionalDetails,
+  EmployeeBankDetails,
+  EmployeeContactDetails,
   EmployeeDocumentUploads,
+  EmployeeReferenceDetails,
   EmploymentHistory,
 } from '@prisma/client';
 import { IEmployee } from './interface/employee.interface';
@@ -62,14 +66,16 @@ export class EmployeeService {
       //   );
       // }
       const employeeId = this.generateEmployeeId();
-      const company = await this.companyRepository.findById(
-        data.currentCompanyId,
-      );
-      if (!company) {
-        throw new NotFoundException(
-          `Company with ID ${data.currentCompanyId} not found.`,
-        );
+      let company;
+      if (data.currentCompanyId) {
+        company = await this.companyRepository.findById(data.currentCompanyId);
+        if (!company) {
+          throw new NotFoundException(
+            `Company with ID ${data.currentCompanyId} not found.`,
+          );
+        }
       }
+
       let designation;
       if (data.currentCompanyDesignationId) {
         designation = await this.designationRepository.getById(
@@ -117,15 +123,15 @@ export class EmployeeService {
         title: data.title,
         firstName: data.firstName,
         lastName: data.lastName,
-        currentCompanyEmployeeDesignationName: designation.name,
-        currentCompanyEmployeeDepartmentName: employeeDepartment.name,
+        currentCompanyEmployeeDesignationName: designation?.name || null,
+        currentCompanyEmployeeDepartmentName: employeeDepartment?.name || null,
         mobileNumber: data.mobileNumber,
         currentCompanyId: data.currentCompanyId || null,
         currentCompanyDesignationId: data.currentCompanyDesignationId || null,
         currentCompanyDepartmentId: data.currentCompanyDepartmentId || null,
         currentCompanySalary: data.currentCompanySalary || null,
         currentCompanyJoiningDate: data.currentCompanyJoiningDate || null,
-        currentCompanyName: company.name || null,
+        currentCompanyName: company?.name || null,
         recruitedBy: data.recruitedBy,
         status: data.status,
         gender: data.gender,
@@ -410,7 +416,7 @@ export class EmployeeService {
     try {
       const updateResponse =
         await this.employeeRepository.updateEmploymentHistory(id, updateDto);
-      console.log(updateResponse);
+
       return {
         message: 'Employment history updated successfully!',
         data: updateResponse,
@@ -466,6 +472,127 @@ export class EmployeeService {
     } catch (error) {
       this.logger.error(
         `Error in getting employee history with error ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  async getEmployeeContactDetails(
+    employeeId: string,
+  ): Promise<{ message: string; data: EmployeeContactDetails }> {
+    try {
+      const existingEmployee = await this.employeeRepository.getEmployeeById(
+        employeeId,
+      );
+      if (!existingEmployee) {
+        throw new NotFoundException(`Employee with ID ${employeeId} not found`);
+      }
+      const contactDetails =
+        await this.employeeRepository.getEmployeeContactDetails(employeeId);
+      return {
+        message: 'Employee contact details fetched successfully',
+        data: contactDetails,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error in getting employee contact details: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  async getEmployeeBankDetails(
+    employeeId: string,
+  ): Promise<{ message: string; data: EmployeeBankDetails }> {
+    try {
+      const existingEmployee = await this.employeeRepository.getEmployeeById(
+        employeeId,
+      );
+      if (!existingEmployee) {
+        throw new NotFoundException(`Employee with ID ${employeeId} not found`);
+      }
+      const bankDetails = await this.employeeRepository.getEmployeeBankDetails(
+        employeeId,
+      );
+      return {
+        message: 'Employee bank details fetched successfully',
+        data: bankDetails,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error in getting employee bank details: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  async getEmployeeAdditionalDetails(
+    employeeId: string,
+  ): Promise<{ message: string; data: EmployeeAdditionalDetails }> {
+    try {
+      const existingEmployee = await this.employeeRepository.getEmployeeById(
+        employeeId,
+      );
+      if (!existingEmployee) {
+        throw new NotFoundException(`Employee with ID ${employeeId} not found`);
+      }
+      const additionalDetails =
+        await this.employeeRepository.getEmployeeAdditionalDetails(employeeId);
+      return {
+        message: 'Employee additional details fetched successfully',
+        data: additionalDetails,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error in getting employee additional details: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  async getEmployeeReferenceDetails(
+    employeeId: string,
+  ): Promise<{ message: string; data: EmployeeReferenceDetails }> {
+    try {
+      const existingEmployee = await this.employeeRepository.getEmployeeById(
+        employeeId,
+      );
+      if (!existingEmployee) {
+        throw new NotFoundException(`Employee with ID ${employeeId} not found`);
+      }
+      const referenceDetails =
+        await this.employeeRepository.getEmployeeReferenceDetails(employeeId);
+      return {
+        message: 'Employee reference details fetched successfully',
+        data: referenceDetails,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error in getting employee reference details: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  async getEmployeeDocumentUploads(
+    employeeId: string,
+  ): Promise<{ message: string; data: EmployeeDocumentUploads }> {
+    try {
+      const existingEmployee = await this.employeeRepository.getEmployeeById(
+        employeeId,
+      );
+      if (!existingEmployee) {
+        throw new NotFoundException(`Employee with ID ${employeeId} not found`);
+      }
+      const documentUploads =
+        await this.employeeRepository.getEmployeeDocumentUploads(employeeId);
+      return {
+        message: 'Employee document uploads fetched successfully',
+        data: documentUploads,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error in getting employee document uploads: ${error.message}`,
       );
       throw error;
     }

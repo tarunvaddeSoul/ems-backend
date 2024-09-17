@@ -182,24 +182,25 @@ enum Title {
 }
 
 model Employee {
-  id                     String   @id @default(dbgenerated("concat('TSS', lpad(floor(random() * 10000)::text, 4, '0'))"))
-  title                  Title
-  firstName              String
-  lastName               String
-  dateOfBirth            String
-  gender                 Gender
-  fatherName             String
-  motherName             String
-  husbandName            String?
-  bloodGroup             String
-  employeeOnboardingDate String
-  employeeRelievingDate  String?
-  status                 Status
-  category               Category
-  recruitedBy            String
-  age                    Int      @default(0)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                            String   @id @default(dbgenerated("concat('TSS', lpad(floor(random() * 10000)::text, 4, '0'))"))
+  title                         Title
+  firstName                     String
+  lastName                      String
+  dateOfBirth                   String
+  gender                        Gender
+  fatherName                    String
+  motherName                    String
+  husbandName                   String?
+  bloodGroup                    String
+  highestEducationQualification String
+  employeeOnboardingDate        String
+  employeeRelievingDate         String?
+  status                        Status
+  category                      Category
+  recruitedBy                   String
+  age                           Int      @default(0)
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
 
   // Relations
   contactDetails      EmployeeContactDetails?
@@ -215,8 +216,8 @@ model Employee {
 
 model EmploymentHistory {
   id              String             @id @default(uuid())
-  employeeId      String
-  employee        Employee           @relation(fields: [employeeId], references: [id])
+  employeeId      String?
+  employee        Employee?          @relation(fields: [employeeId], references: [id])
   companyName     String
   designationName String
   departmentName  String
@@ -235,20 +236,20 @@ model EmploymentHistory {
 }
 
 model EmployeeContactDetails {
-  id                String   @id @default(uuid())
-  employeeId        String   @unique
-  mobileNumber      String
-  aadhaarNumber     String
-  permanentAddress  String
-  presentAddress    String
-  city              String
-  district          String
-  state             String
-  pincode           Int
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String   @id @default(uuid())
+  employeeId       String   @unique
+  mobileNumber     String
+  aadhaarNumber    String
+  permanentAddress String
+  presentAddress   String
+  city             String
+  district         String
+  state            String
+  pincode          Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  employee          Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
 
   @@index([mobileNumber])
   @@index([aadhaarNumber])
@@ -264,7 +265,7 @@ model EmployeeBankDetails {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  employee          Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
 }
 
 model EmployeeAdditionalDetails {
@@ -281,7 +282,7 @@ model EmployeeAdditionalDetails {
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
-  employee                  Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
 }
 
 model EmployeeReferenceDetails {
@@ -293,23 +294,23 @@ model EmployeeReferenceDetails {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  employee         Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
 }
 
 model EmployeeDocumentUploads {
-  id                  String   @id @default(uuid())
-  employeeId          String   @unique
-  photo         String
-  aadhaar       String
-  panCard       String
-  bankPassbook        String
-  markSheet           String
-  otherDocument       String
+  id                   String   @id @default(uuid())
+  employeeId           String   @unique
+  photo                String
+  aadhaar              String
+  panCard              String
+  bankPassbook         String
+  markSheet            String
+  otherDocument        String
   otherDocumentRemarks String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  employee            Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
 }
 
 model Attendance {

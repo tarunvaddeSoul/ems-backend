@@ -6,7 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Employee, EmployeeDocumentUploads, EmploymentHistory, Prisma } from '@prisma/client';
+import {
+  Employee,
+  EmployeeDocumentUploads,
+  EmploymentHistory,
+  Prisma,
+} from '@prisma/client';
 import { IEmployee } from './interface/employee.interface';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { GetAllEmployeesDto } from './dto/get-all-employees.dto';
@@ -37,6 +42,7 @@ export class EmployeeRepository {
             category: data.category,
             recruitedBy: data.recruitedBy,
             age: data.age,
+            highestEducationQualification: data.highestEducationQualification,
           },
         });
 
@@ -143,10 +149,7 @@ export class EmployeeRepository {
     });
   }
 
-  async updateEmployeeContactDetails(
-    employeeId: string,
-    data: any,
-  ) {
+  async updateEmployeeContactDetails(employeeId: string, data: any) {
     return this.prisma.employeeContactDetails.upsert({
       where: { employeeId },
       update: data,
@@ -154,10 +157,13 @@ export class EmployeeRepository {
     });
   }
 
-  async updateEmployeeBankDetails(
-    employeeId: string,
-    data: any,
-  ) {
+  async getEmployeeContactDetails(employeeId: string) {
+    return this.prisma.employeeContactDetails.findUnique({
+      where: { employeeId },
+    });
+  }
+
+  async updateEmployeeBankDetails(employeeId: string, data: any) {
     return this.prisma.employeeBankDetails.upsert({
       where: { employeeId },
       update: data,
@@ -165,10 +171,13 @@ export class EmployeeRepository {
     });
   }
 
-  async updateEmployeeAdditionalDetails(
-    employeeId: string,
-    data: any,
-  ) {
+  async getEmployeeBankDetails(employeeId: string) {
+    return this.prisma.employeeBankDetails.findUnique({
+      where: { employeeId },
+    });
+  }
+
+  async updateEmployeeAdditionalDetails(employeeId: string, data: any) {
     return this.prisma.employeeAdditionalDetails.upsert({
       where: { employeeId },
       update: data,
@@ -176,10 +185,13 @@ export class EmployeeRepository {
     });
   }
 
-  async updateEmployeeReferenceDetails(
-    employeeId: string,
-    data: any,
-  ) {
+  async getEmployeeAdditionalDetails(employeeId: string) {
+    return this.prisma.employeeAdditionalDetails.findUnique({
+      where: { employeeId },
+    });
+  }
+
+  async updateEmployeeReferenceDetails(employeeId: string, data: any) {
     return this.prisma.employeeReferenceDetails.upsert({
       where: { employeeId },
       update: data,
@@ -187,13 +199,21 @@ export class EmployeeRepository {
     });
   }
 
-  async updateEmployeeDocumentUploads(
-    employeeId: string,
-    data: Partial<Prisma.EmployeeDocumentUploadsUpdateInput>
-  ): Promise<EmployeeDocumentUploads> {
-    const existingRecord = await this.prisma.employeeDocumentUploads.findUnique({
+  async getEmployeeReferenceDetails(employeeId: string) {
+    return this.prisma.employeeReferenceDetails.findUnique({
       where: { employeeId },
     });
+  }
+
+  async updateEmployeeDocumentUploads(
+    employeeId: string,
+    data: Partial<Prisma.EmployeeDocumentUploadsUpdateInput>,
+  ): Promise<EmployeeDocumentUploads> {
+    const existingRecord = await this.prisma.employeeDocumentUploads.findUnique(
+      {
+        where: { employeeId },
+      },
+    );
 
     if (existingRecord) {
       return this.prisma.employeeDocumentUploads.update({
@@ -203,13 +223,13 @@ export class EmployeeRepository {
     } else {
       const createData: Prisma.EmployeeDocumentUploadsCreateInput = {
         employee: { connect: { id: employeeId } },
-        photo: data.photo as string ?? '',
-        aadhaar: data.aadhaar as string ?? '',
-        panCard: data.panCard as string ?? '',
-        bankPassbook: data.bankPassbook as string ?? '',
-        markSheet: data.markSheet as string ?? '',
-        otherDocument: data.otherDocument as string ?? '',
-        otherDocumentRemarks: data.otherDocumentRemarks as string ?? '',
+        photo: (data.photo as string) ?? '',
+        aadhaar: (data.aadhaar as string) ?? '',
+        panCard: (data.panCard as string) ?? '',
+        bankPassbook: (data.bankPassbook as string) ?? '',
+        markSheet: (data.markSheet as string) ?? '',
+        otherDocument: (data.otherDocument as string) ?? '',
+        otherDocumentRemarks: (data.otherDocumentRemarks as string) ?? '',
       };
       return this.prisma.employeeDocumentUploads.create({
         data: createData,
@@ -217,12 +237,14 @@ export class EmployeeRepository {
     }
   }
 
-  async updateEmploymentHistory(id: string, data: Prisma.EmploymentHistoryUpdateInput) {
+  async updateEmploymentHistory(
+    id: string,
+    data: Prisma.EmploymentHistoryUpdateInput,
+  ) {
     const updateResponse = await this.prisma.employmentHistory.update({
       where: { id },
       data,
     });
-    console.log(updateResponse)
     return updateResponse;
   }
 
@@ -233,9 +255,11 @@ export class EmployeeRepository {
     });
   }
 
-  async getCurrentEmploymentHistory(employeeId: string): Promise<EmploymentHistory | null> {
+  async getCurrentEmploymentHistory(
+    employeeId: string,
+  ): Promise<EmploymentHistory | null> {
     return this.prisma.employmentHistory.findFirst({
-      where: { 
+      where: {
         employeeId,
         leavingDate: null,
       },
@@ -282,12 +306,13 @@ export class EmployeeRepository {
     });
   }
 
-  async getEmployeeDocumentUploads(employeeId: string): Promise<EmployeeDocumentUploads | null> {
+  async getEmployeeDocumentUploads(
+    employeeId: string,
+  ): Promise<EmployeeDocumentUploads | null> {
     return this.prisma.employeeDocumentUploads.findUnique({
       where: { employeeId },
     });
   }
-
 
   async findActiveByEmployeeId(
     employeeId: string,

@@ -26,12 +26,27 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
-import { UpdateEmployeeAdditionalDetailsDto, UpdateEmployeeBankDetailsDto, UpdateEmployeeContactDetailsDto, UpdateEmployeeDocumentUploadsDto, UpdateEmployeeDto, UpdateEmployeeReferenceDetailsDto } from './dto/update-employee.dto';
+import {
+  UpdateEmployeeAdditionalDetailsDto,
+  UpdateEmployeeBankDetailsDto,
+  UpdateEmployeeContactDetailsDto,
+  UpdateEmployeeDocumentUploadsDto,
+  UpdateEmployeeDto,
+  UpdateEmployeeReferenceDetailsDto,
+} from './dto/update-employee.dto';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { DeleteEmployeesDto } from './dto/delete-employees.dto';
 import { GetAllEmployeesDto } from './dto/get-all-employees.dto';
-import { Employee, EmployeeDocumentUploads, EmploymentHistory } from '@prisma/client';
-import { CreateEmploymentHistoryDto, LeavingDateDto, UpdateEmploymentHistoryDto } from './dto/employment-history.dto';
+import {
+  Employee,
+  EmployeeDocumentUploads,
+  EmploymentHistory,
+} from '@prisma/client';
+import {
+  CreateEmploymentHistoryDto,
+  LeavingDateDto,
+  UpdateEmploymentHistoryDto,
+} from './dto/employment-history.dto';
 
 @Controller('employees')
 @UseInterceptors(TransformInterceptor)
@@ -103,7 +118,10 @@ export class EmployeeController {
 
   @Patch(':id/contact-details')
   @ApiOperation({ summary: 'Update employee contact details' })
-  @ApiResponse({ status: 200, description: 'The employee contact details have been successfully updated.' })
+  @ApiResponse({
+    status: 200,
+    description: 'The employee contact details have been successfully updated.',
+  })
   async updateEmployeeContactDetails(
     @Param('id') id: string,
     @Body() updateDto: UpdateEmployeeContactDetailsDto,
@@ -113,7 +131,10 @@ export class EmployeeController {
 
   @Patch(':id/bank-details')
   @ApiOperation({ summary: 'Update employee bank details' })
-  @ApiResponse({ status: 200, description: 'The employee bank details have been successfully updated.' })
+  @ApiResponse({
+    status: 200,
+    description: 'The employee bank details have been successfully updated.',
+  })
   async updateEmployeeBankDetails(
     @Param('id') id: string,
     @Body() updateDto: UpdateEmployeeBankDetailsDto,
@@ -123,7 +144,11 @@ export class EmployeeController {
 
   @Patch(':id/additional-details')
   @ApiOperation({ summary: 'Update employee additional details' })
-  @ApiResponse({ status: 200, description: 'The employee additional details have been successfully updated.' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'The employee additional details have been successfully updated.',
+  })
   async updateEmployeeAdditionalDetails(
     @Param('id') id: string,
     @Body() updateDto: UpdateEmployeeAdditionalDetailsDto,
@@ -133,7 +158,11 @@ export class EmployeeController {
 
   @Patch(':id/reference-details')
   @ApiOperation({ summary: 'Update employee reference details' })
-  @ApiResponse({ status: 200, description: 'The employee reference details have been successfully updated.' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'The employee reference details have been successfully updated.',
+  })
   async updateEmployeeReferenceDetails(
     @Param('id') id: string,
     @Body() updateDto: UpdateEmployeeReferenceDetailsDto,
@@ -143,25 +172,32 @@ export class EmployeeController {
 
   @Patch(':id/document-uploads')
   @ApiOperation({ summary: 'Update employee document uploads' })
-  @ApiResponse({ status: 200, description: 'The employee document uploads have been successfully updated.' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'The employee document uploads have been successfully updated.',
+  })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'photo', maxCount: 1 },
-    { name: 'aadhaar', maxCount: 1 },
-    { name: 'panCard', maxCount: 1 },
-    { name: 'bankPassbook', maxCount: 1 },
-    { name: 'markSheet', maxCount: 1 },
-    { name: 'otherDocument', maxCount: 1 },
-  ]))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'photo', maxCount: 1 },
+      { name: 'aadhaar', maxCount: 1 },
+      { name: 'panCard', maxCount: 1 },
+      { name: 'bankPassbook', maxCount: 1 },
+      { name: 'markSheet', maxCount: 1 },
+      { name: 'otherDocument', maxCount: 1 },
+    ]),
+  )
   async updateEmployeeDocumentUploads(
     @Param('id') id: string,
-    @UploadedFiles() files: {
-      photo?: Express.Multer.File[],
-      aadhaar?: Express.Multer.File[],
-      panCard?: Express.Multer.File[],
-      bankPassbook?: Express.Multer.File[],
-      markSheet?: Express.Multer.File[],
-      otherDocument?: Express.Multer.File[],
+    @UploadedFiles()
+    files: {
+      photo?: Express.Multer.File[];
+      aadhaar?: Express.Multer.File[];
+      panCard?: Express.Multer.File[];
+      bankPassbook?: Express.Multer.File[];
+      markSheet?: Express.Multer.File[];
+      otherDocument?: Express.Multer.File[];
     },
     @Body() updateDto: UpdateEmployeeDocumentUploadsDto,
   ): Promise<{ message: string; data: EmployeeDocumentUploads }> {
@@ -179,7 +215,10 @@ export class EmployeeController {
 
   @Post(':employeeId/employment-history')
   @ApiOperation({ summary: 'Create a new employment history record' })
-  @ApiResponse({ status: 201, description: 'The employment history record has been successfully created.' })
+  @ApiResponse({
+    status: 201,
+    description: 'The employment history record has been successfully created.',
+  })
   async createEmploymentHistory(
     @Param('employeeId') employeeId: string,
     @Body() createDto: CreateEmploymentHistoryDto,
@@ -190,7 +229,10 @@ export class EmployeeController {
 
   @Patch('employment-history/:id')
   @ApiOperation({ summary: 'Update an employment history record' })
-  @ApiResponse({ status: 200, description: 'The employment history record has been successfully updated.' })
+  @ApiResponse({
+    status: 200,
+    description: 'The employment history record has been successfully updated.',
+  })
   async updateEmploymentHistory(
     @Param('id') id: string,
     @Body() updateDto: UpdateEmploymentHistoryDto,
@@ -200,19 +242,83 @@ export class EmployeeController {
 
   @Patch(':employeeId/close-employment')
   @ApiOperation({ summary: 'Close the current employment record' })
-  @ApiResponse({ status: 200, description: 'The current employment record has been successfully closed.' })
+  @ApiResponse({
+    status: 200,
+    description: 'The current employment record has been successfully closed.',
+  })
   async closeCurrentEmployment(
     @Param('employeeId') employeeId: string,
     @Body() data: LeavingDateDto,
   ): Promise<{ message: string; data: EmploymentHistory }> {
-    return this.employeeService.closeCurrentEmployment(employeeId, data.leavingDate);
+    return this.employeeService.closeCurrentEmployment(
+      employeeId,
+      data.leavingDate,
+    );
   }
 
-  @Get(':id/employment-history')
-  @ApiOperation({ summary: 'Get employee\'s employment history' })
-  @ApiResponse({ status: 200, description: 'The employment history has been successfully retrieved.' })
-  async getEmploymentHistory(@Param('id') id: string) {
-    return this.employeeService.getEmploymentHistory(id);
+  @Get(':employeeId/employment-history')
+  @ApiOperation({ summary: "Get employee's employment history" })
+  @ApiResponse({
+    status: 200,
+    description: 'The employment history has been successfully retrieved.',
+  })
+  async getEmploymentHistory(@Param('employeeId') employeeId: string) {
+    return this.employeeService.getEmploymentHistory(employeeId);
+  }
+
+  @Get(':employeeId/contact-details')
+  @ApiOperation({ summary: 'Get employee contact details' })
+  @ApiParam({ name: 'employeeId', required: true, description: 'Employee ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Employee contact details retrieved successfully',
+  })
+  async getEmployeeContactDetails(@Param('employeeId') employeeId: string) {
+    return this.employeeService.getEmployeeContactDetails(employeeId);
+  }
+
+  @Get(':employeeId/bank-details')
+  @ApiOperation({ summary: 'Get employee bank details' })
+  @ApiParam({ name: 'employeeId', required: true, description: 'Employee ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Employee bank details retrieved successfully',
+  })
+  async getEmployeeBankDetails(@Param('employeeId') employeeId: string) {
+    return this.employeeService.getEmployeeBankDetails(employeeId);
+  }
+
+  @Get(':employeeId/additional-details')
+  @ApiOperation({ summary: 'Get employee additional details' })
+  @ApiParam({ name: 'employeeId', required: true, description: 'Employee ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Employee additional details retrieved successfully',
+  })
+  async getEmployeeAdditionalDetails(@Param('employeeId') employeeId: string) {
+    return this.employeeService.getEmployeeAdditionalDetails(employeeId);
+  }
+
+  @Get(':employeeId/reference-details')
+  @ApiOperation({ summary: 'Get employee reference details' })
+  @ApiParam({ name: 'employeeId', required: true, description: 'Employee ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Employee reference details retrieved successfully',
+  })
+  async getEmployeeReferenceDetails(@Param('employeeId') employeeId: string) {
+    return this.employeeService.getEmployeeReferenceDetails(employeeId);
+  }
+
+  @Get(':employeeId/document-uploads')
+  @ApiOperation({ summary: 'Get employee document uploads' })
+  @ApiParam({ name: 'employeeId', required: true, description: 'Employee ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Employee document uploads retrieved successfully',
+  })
+  async getEmployeeDocumentUploads(@Param('employeeId') employeeId: string) {
+    return this.employeeService.getEmployeeDocumentUploads(employeeId);
   }
 
   @Get(':id')
