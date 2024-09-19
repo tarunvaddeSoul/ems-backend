@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { Attendance } from '@prisma/client';
@@ -81,31 +81,6 @@ export class AttendanceRepository {
     }
   }
 
-  // async markBulkAttendance(
-  //   bulkMarkAttendanceDto: BulkMarkAttendanceDto,
-  // ): Promise<Attendance[]> {
-  //   const attendanceRecords = [];
-
-  //   for (const markAttendanceDto of bulkMarkAttendanceDto.records) {
-  //     try {
-  //       const { employeeId, month, presentCount } = markAttendanceDto;
-  //       const attendanceRecord = await this.prisma.attendance.create({
-  //         data: {
-  //           employeeId,
-  //           month,
-  //           presentCount,
-  //         },
-  //       });
-  //       attendanceRecords.push(attendanceRecord);
-  //     } catch (error) {
-  //       // Handle specific errors or log them as needed
-  //       // Continue processing other records
-  //     }
-  //   }
-
-  //   return attendanceRecords;
-  // }
-
   async getAttendanceRecordsByIds(ids: string[]) {
     try {
       const attendances = await this.prisma.attendance.findMany({
@@ -170,7 +145,10 @@ export class AttendanceRepository {
     }
   }
 
-  async getAllAttendanceRecordsByCompanyIdAndMonth(companyId: string, month: string): Promise<any[]> {
+  async getAllAttendanceRecordsByCompanyIdAndMonth(
+    companyId: string,
+    month: string,
+  ): Promise<any[]> {
     try {
       const attendanceRecords = await this.prisma.attendance.findMany({
         where: {
@@ -213,14 +191,30 @@ export class AttendanceRepository {
           },
         },
       });
-  
-      return attendanceRecords.map(record => ({
+      const { attendanceSheetUrl } =
+        await this.prisma.attendanceSheet.findUnique({
+          where: {
+            companyId_month: {
+              companyId,
+              month,
+            },
+          },
+        });
+      if (!attendanceSheetUrl) {
+        throw new NotFoundException(`No attendance sheet found`);
+      }
+      return attendanceRecords.map((record) => ({
         employeeID: record.employee.id,
         employeeName: `${record.employee.firstName} ${record.employee.lastName}`,
         companyName: record.company?.name || 'Unknown Company',
-        designationName: record.employee.employmentHistories[0]?.designation.name || 'Unknown Designation',
-        departmentName: record.employee.employmentHistories[0]?.department.name || 'Unknown Department',
+        designationName:
+          record.employee.employmentHistories[0]?.designation.name ||
+          'Unknown Designation',
+        departmentName:
+          record.employee.employmentHistories[0]?.department.name ||
+          'Unknown Department',
         presentCount: record.presentCount,
+        attendanceSheetUrl,
       }));
     } catch (error) {
       throw error;

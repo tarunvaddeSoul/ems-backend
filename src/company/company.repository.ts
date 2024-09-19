@@ -141,6 +141,7 @@ export class CompanyRepository {
         select: {
           id: true,
           employeeId: true,
+          status: true,
           employee: {
             select: {
               title: true,
@@ -168,6 +169,7 @@ export class CompanyRepository {
       return employees.map(employee => ({
         id: employee.id,
         employeeId: employee.employeeId,
+        status: employee.status,
         title: employee.employee.title,
         firstName: employee.employee.firstName,
         lastName: employee.employee.lastName,
