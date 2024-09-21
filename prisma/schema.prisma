@@ -128,7 +128,7 @@ model SalaryTemplate {
 model SalaryRecord {
   id         String   @id @default(uuid())
   employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id])
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   companyId  String
   company    Company  @relation(fields: [companyId], references: [id])
   month      DateTime
@@ -202,12 +202,12 @@ model Employee {
   createdAt                     DateTime @default(now())
   updatedAt                     DateTime @updatedAt
 
-  // Relations
-  contactDetails      EmployeeContactDetails?
-  bankDetails         EmployeeBankDetails?
-  additionalDetails   EmployeeAdditionalDetails?
-  referenceDetails    EmployeeReferenceDetails?
-  documentUploads     EmployeeDocumentUploads?
+  // Relations with cascade delete
+  contactDetails      EmployeeContactDetails?    @relation("EmployeeToContactDetails")
+  bankDetails         EmployeeBankDetails?       @relation("EmployeeToBankDetails")
+  additionalDetails   EmployeeAdditionalDetails? @relation("EmployeeToAdditionalDetails")
+  referenceDetails    EmployeeReferenceDetails?  @relation("EmployeeToReferenceDetails")
+  documentUploads     EmployeeDocumentUploads?   @relation("EmployeeToDocumentUploads")
   employmentHistories EmploymentHistory[]
   salaryRecords       SalaryRecord[]
   attendances         Attendance[]
@@ -217,7 +217,7 @@ model Employee {
 model EmploymentHistory {
   id              String             @id @default(uuid())
   employeeId      String?
-  employee        Employee?          @relation(fields: [employeeId], references: [id])
+  employee        Employee?          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   companyName     String
   designationName String
   departmentName  String
@@ -249,7 +249,7 @@ model EmployeeContactDetails {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  employee Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation("EmployeeToContactDetails", fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([mobileNumber])
   @@index([aadhaarNumber])
@@ -265,7 +265,7 @@ model EmployeeBankDetails {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  employee Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation("EmployeeToBankDetails", fields: [employeeId], references: [id], onDelete: Cascade)
 }
 
 model EmployeeAdditionalDetails {
@@ -282,7 +282,7 @@ model EmployeeAdditionalDetails {
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
-  employee Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation("EmployeeToAdditionalDetails", fields: [employeeId], references: [id], onDelete: Cascade)
 }
 
 model EmployeeReferenceDetails {
@@ -294,7 +294,7 @@ model EmployeeReferenceDetails {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  employee Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation("EmployeeToReferenceDetails", fields: [employeeId], references: [id], onDelete: Cascade)
 }
 
 model EmployeeDocumentUploads {
@@ -310,7 +310,7 @@ model EmployeeDocumentUploads {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  employee Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation("EmployeeToDocumentUploads", fields: [employeeId], references: [id], onDelete: Cascade)
 }
 
 model Attendance {
@@ -319,7 +319,7 @@ model Attendance {
   month        String
   presentCount Int
   companyId    String?
-  employee     Employee @relation(fields: [employeeId], references: [id])
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   company      Company? @relation(fields: [companyId], references: [id])
 
   @@unique([employeeId, companyId, month])
@@ -371,7 +371,7 @@ model Salary {
   netSalary             Float
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-  employee              Employee @relation(fields: [employeeId], references: [id])
+  employee              Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   company               Company  @relation(fields: [companyId], references: [id])
 
   @@unique([employeeId, companyId, month])

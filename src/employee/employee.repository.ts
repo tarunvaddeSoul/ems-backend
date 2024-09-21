@@ -490,6 +490,8 @@ export class EmployeeRepository {
       });
       return deleteEmployeeResponse;
     } catch (error) {
+      console.error('Error while deleting')
+      console.error(error)
       return error;
     }
   }

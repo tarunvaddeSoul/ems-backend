@@ -437,7 +437,7 @@ export class EmployeeService {
   ): Promise<{ message: string; data: EmploymentHistory }> {
     const currentEmployment =
       await this.employeeRepository.getCurrentEmploymentHistory(employeeId);
-    console.log(currentEmployment);
+
     if (!currentEmployment) {
       throw new NotFoundException(
         `No active employment found for employee with ID ${employeeId}`,
@@ -660,23 +660,13 @@ export class EmployeeService {
       const employeeResponse = await this.employeeRepository.getEmployeeById(
         id,
       );
+
       if (!employeeResponse) {
         throw new NotFoundException(`Employee with ID: ${id} not found.`);
       }
 
-      const deleteFile = async (fileUrl: string) => {
-        const key = this.extractKeyFromUrl(fileUrl);
-        if (key) {
-          await this.awsS3Service.deleteFile(key);
-        }
-      };
-
-      await deleteFile(employeeResponse.photo);
-      await deleteFile(employeeResponse.aadhaar);
-      await deleteFile(employeeResponse.panCard);
-      await deleteFile(employeeResponse.bankPassbook);
-      await deleteFile(employeeResponse.markSheet);
-      await deleteFile(employeeResponse.otherDocument);
+      // Delete associated files
+      await this.deleteEmployeeFiles(employeeResponse.documentUploads);
 
       const deleteEmployeeResponse =
         await this.employeeRepository.deleteEmployeeById(id);
@@ -699,20 +689,8 @@ export class EmployeeService {
         if (!employee) {
           throw new NotFoundException(`Employee with ID ${id} not found`);
         }
-
-        const deleteFile = async (fileUrl: string) => {
-          const key = this.extractKeyFromUrl(fileUrl);
-          if (key) {
-            await this.awsS3Service.deleteFile(key);
-          }
-        };
-
-        await deleteFile(employee.photo);
-        await deleteFile(employee.aadhaar);
-        await deleteFile(employee.panCard);
-        await deleteFile(employee.bankPassbook);
-        await deleteFile(employee.markSheet);
-        await deleteFile(employee.otherDocument);
+        // Delete associated files
+        await this.deleteEmployeeFiles(employee.documentUploads);
 
         await this.employeeRepository.deleteEmployeeById(id);
       }
@@ -720,6 +698,36 @@ export class EmployeeService {
     } catch (error) {
       this.logger.error(`Error deleting employees: ${error.message}`);
       throw error;
+    }
+  }
+
+  private async deleteEmployeeFiles(
+    documentUploads: EmployeeDocumentUploads | null,
+  ) {
+    if (!documentUploads) return;
+
+    const filesToDelete = [
+      documentUploads.photo,
+      documentUploads.aadhaar,
+      documentUploads.panCard,
+      documentUploads.bankPassbook,
+      documentUploads.markSheet,
+      documentUploads.otherDocument,
+    ];
+
+    for (const fileUrl of filesToDelete) {
+      if (fileUrl) {
+        const key = this.extractKeyFromUrl(fileUrl);
+        if (key) {
+          try {
+            await this.awsS3Service.deleteFile(key);
+          } catch (error) {
+            this.logger.warn(
+              `Failed to delete file: ${key}. Error: ${error.message}`,
+            );
+          }
+        }
+      }
     }
   }
 

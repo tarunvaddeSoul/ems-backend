@@ -73,7 +73,7 @@ export class EmployeeController {
     FileFieldsInterceptor([
       { name: 'photo', maxCount: 1 },
       { name: 'aadhaar', maxCount: 1 },
-      { name: 'panCardUpload', maxCount: 1 },
+      { name: 'panCard', maxCount: 1 },
       { name: 'bankPassbook', maxCount: 1 },
       { name: 'markSheet', maxCount: 1 },
       { name: 'otherDocument', maxCount: 1 },
@@ -85,7 +85,7 @@ export class EmployeeController {
     files: {
       photo?: Express.Multer.File[];
       aadhaar?: Express.Multer.File[];
-      panCardUpload?: Express.Multer.File[];
+      panCard?: Express.Multer.File[];
       bankPassbook?: Express.Multer.File[];
       markSheet?: Express.Multer.File[];
       otherDocument?: Express.Multer.File[];
@@ -95,7 +95,7 @@ export class EmployeeController {
       data,
       files.photo ? files.photo[0] : null,
       files.aadhaar ? files.aadhaar[0] : null,
-      files.panCardUpload ? files.panCardUpload[0] : null,
+      files.panCard ? files.panCard[0] : null,
       files.bankPassbook ? files.bankPassbook[0] : null,
       files.markSheet ? files.markSheet[0] : null,
       files.otherDocument ? files.otherDocument[0] : null,

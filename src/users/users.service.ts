@@ -59,7 +59,7 @@ export class UsersService {
   async generateUserTokens(userId: string, role: Role) {
     const accessToken = await this.jwtService.sign(
       { userId, role },
-      { expiresIn: '1h' },
+      { expiresIn: '6h' },
     );
     const refreshToken = uuidv4();
     await this.storeRefreshToken(refreshToken, userId);
