@@ -347,8 +347,6 @@ model AttendanceSheet {
 
 model Salary {
   id                    String   @id @default(uuid())
-  employeeId            String
-  companyId             String
   month                 String // Format: MM-YYYY
   monthlySalary         Float
   dutyDone              Int
@@ -371,8 +369,11 @@ model Salary {
   netSalary             Float
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-  employee              Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  company               Company  @relation(fields: [companyId], references: [id])
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+  company    Company  @relation(fields: [companyId], references: [id])
+  companyId  String
 
   @@unique([employeeId, companyId, month])
 }
