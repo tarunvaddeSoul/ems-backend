@@ -1,11 +1,12 @@
-// src/salary/salary.controller.ts
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, UseInterceptors } from '@nestjs/common';
 import { SalaryService } from './salary.service';
 import { CalculateSalaryDto } from './dto/calculate-salary.dto';
 import { ApiTags } from '@nestjs/swagger';
+import { TransformInterceptor } from 'src/common/transform-interceptor';
 
 @Controller('salary')
 @ApiTags('Salary')
+@UseInterceptors(TransformInterceptor)
 export class SalaryController {
   constructor(private readonly salaryService: SalaryService) {}
 
