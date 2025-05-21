@@ -92,7 +92,7 @@ export class SalaryService {
         month: data.month,
         monthlySalary: monthlySalary,
         dutyDone: data.dutyDone,
-        wagesPerDay: wagesPerDay,
+        wagesPerDay,
         basicPay: basicPay,
         epfWages: epfWages,
         bonus: bonus,
@@ -110,7 +110,7 @@ export class SalaryService {
         totalDeductions: totalDeductions,
         netSalary: netSalary,
       };
-
+      console.log(JSON.stringify(salaryData, null, 2));
       const salary = await this.salaryRepository.createOrUpdateSalary(
         salaryData,
       );

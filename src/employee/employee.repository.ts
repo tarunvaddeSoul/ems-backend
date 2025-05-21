@@ -1,19 +1,16 @@
-import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   Employee,
+  EmployeeAdditionalDetails,
+  EmployeeBankDetails,
+  EmployeeContactDetails,
   EmployeeDocumentUploads,
+  EmployeeReferenceDetails,
   EmploymentHistory,
   Prisma,
 } from '@prisma/client';
 import { IEmployee } from './interface/employee.interface';
-import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { GetAllEmployeesDto } from './dto/get-all-employees.dto';
 import { Status } from './enum/employee.enum';
 
@@ -21,7 +18,7 @@ import { Status } from './enum/employee.enum';
 export class EmployeeRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createEmployee(data: IEmployee): Promise<any> {
+  async createEmployee(data: IEmployee): Promise<Employee> {
     try {
       const result = await this.prisma.$transaction(async (prisma) => {
         // Create the main employee record
@@ -149,7 +146,10 @@ export class EmployeeRepository {
     });
   }
 
-  async updateEmployeeContactDetails(employeeId: string, data: any) {
+  async updateEmployeeContactDetails(
+    employeeId: string,
+    data: any,
+  ): Promise<EmployeeContactDetails> {
     return this.prisma.employeeContactDetails.upsert({
       where: { employeeId },
       update: data,
@@ -157,13 +157,18 @@ export class EmployeeRepository {
     });
   }
 
-  async getEmployeeContactDetails(employeeId: string) {
+  async getEmployeeContactDetails(
+    employeeId: string,
+  ): Promise<EmployeeContactDetails> {
     return this.prisma.employeeContactDetails.findUnique({
       where: { employeeId },
     });
   }
 
-  async updateEmployeeBankDetails(employeeId: string, data: any) {
+  async updateEmployeeBankDetails(
+    employeeId: string,
+    data: any,
+  ): Promise<EmployeeBankDetails> {
     return this.prisma.employeeBankDetails.upsert({
       where: { employeeId },
       update: data,
@@ -171,13 +176,18 @@ export class EmployeeRepository {
     });
   }
 
-  async getEmployeeBankDetails(employeeId: string) {
+  async getEmployeeBankDetails(
+    employeeId: string,
+  ): Promise<EmployeeBankDetails> {
     return this.prisma.employeeBankDetails.findUnique({
       where: { employeeId },
     });
   }
 
-  async updateEmployeeAdditionalDetails(employeeId: string, data: any) {
+  async updateEmployeeAdditionalDetails(
+    employeeId: string,
+    data: any,
+  ): Promise<EmployeeAdditionalDetails> {
     return this.prisma.employeeAdditionalDetails.upsert({
       where: { employeeId },
       update: data,
@@ -185,13 +195,18 @@ export class EmployeeRepository {
     });
   }
 
-  async getEmployeeAdditionalDetails(employeeId: string) {
+  async getEmployeeAdditionalDetails(
+    employeeId: string,
+  ): Promise<EmployeeAdditionalDetails> {
     return this.prisma.employeeAdditionalDetails.findUnique({
       where: { employeeId },
     });
   }
 
-  async updateEmployeeReferenceDetails(employeeId: string, data: any) {
+  async updateEmployeeReferenceDetails(
+    employeeId: string,
+    data: any,
+  ): Promise<EmployeeReferenceDetails> {
     return this.prisma.employeeReferenceDetails.upsert({
       where: { employeeId },
       update: data,
@@ -199,7 +214,9 @@ export class EmployeeRepository {
     });
   }
 
-  async getEmployeeReferenceDetails(employeeId: string) {
+  async getEmployeeReferenceDetails(
+    employeeId: string,
+  ): Promise<EmployeeReferenceDetails> {
     return this.prisma.employeeReferenceDetails.findUnique({
       where: { employeeId },
     });
@@ -240,7 +257,7 @@ export class EmployeeRepository {
   async updateEmploymentHistory(
     id: string,
     data: Prisma.EmploymentHistoryUpdateInput,
-  ) {
+  ): Promise<EmploymentHistory> {
     const updateResponse = await this.prisma.employmentHistory.update({
       where: { id },
       data,
@@ -257,7 +274,7 @@ export class EmployeeRepository {
 
   async getCurrentEmploymentHistory(
     employeeId: string,
-  ): Promise<EmploymentHistory | null> {
+  ): Promise<EmploymentHistory> {
     return this.prisma.employmentHistory.findFirst({
       where: {
         employeeId,
@@ -268,32 +285,24 @@ export class EmployeeRepository {
   }
 
   async createEmploymentHistory(data: any): Promise<EmploymentHistory> {
-    try {
-      return await this.prisma.employmentHistory.create({ data });
-    } catch (error) {
-      throw error;
-    }
+    return await this.prisma.employmentHistory.create({ data });
   }
 
   async closeCurrentEmploymentHistory(employeeId: string): Promise<void> {
-    try {
-      const now = new Date();
+    const now = new Date();
 
-      const formattedLeavingDate = new Intl.DateTimeFormat('en-GB')
-        .format(now)
-        .split('/')
-        .join('-'); // Formats date as DD-MM-YYYY
+    const formattedLeavingDate = new Intl.DateTimeFormat('en-GB')
+      .format(now)
+      .split('/')
+      .join('-'); // Formats date as DD-MM-YYYY
 
-      await this.prisma.employmentHistory.updateMany({
-        where: {
-          employeeId,
-          leavingDate: null,
-        },
-        data: { leavingDate: formattedLeavingDate, status: Status.INACTIVE },
-      });
-    } catch (error) {
-      throw error;
-    }
+    await this.prisma.employmentHistory.updateMany({
+      where: {
+        employeeId,
+        leavingDate: null,
+      },
+      data: { leavingDate: formattedLeavingDate, status: Status.INACTIVE },
+    });
   }
 
   async updateCurrentEmploymentHistory(
@@ -308,16 +317,14 @@ export class EmployeeRepository {
 
   async getEmployeeDocumentUploads(
     employeeId: string,
-  ): Promise<EmployeeDocumentUploads | null> {
+  ): Promise<EmployeeDocumentUploads> {
     return this.prisma.employeeDocumentUploads.findUnique({
       where: { employeeId },
     });
   }
 
-  async findActiveByEmployeeId(
-    employeeId: string,
-  ): Promise<EmploymentHistory | null> {
-    return this.prisma.employmentHistory.findFirst({
+  async findActiveByEmployeeId(employeeId: string): Promise<EmploymentHistory> {
+    return await this.prisma.employmentHistory.findFirst({
       where: {
         employeeId,
         status: Status.ACTIVE,
@@ -331,44 +338,35 @@ export class EmployeeRepository {
   }
 
   async getEmployeeById(id: string) {
-    try {
-      const employeeResponse = await this.prisma.employee.findUnique({
-        where: { id },
-        include: {
-          contactDetails: true,
-          bankDetails: true,
-          additionalDetails: true,
-          referenceDetails: true,
-          documentUploads: true,
-          employmentHistories: true,
-        },
-      });
-      return employeeResponse;
-    } catch (error) {
-      return error;
-    }
+    const employeeResponse = await this.prisma.employee.findUnique({
+      where: { id },
+      include: {
+        contactDetails: true,
+        bankDetails: true,
+        additionalDetails: true,
+        referenceDetails: true,
+        documentUploads: true,
+        employmentHistories: true,
+      },
+    });
+    return employeeResponse;
   }
 
-  async findByIdWithCurrentEmployment(id: string): Promise<Employee | null> {
-    try {
-      return await this.prisma.employee.findUnique({
-        where: { id },
-        include: {
-          employmentHistories: {
-            orderBy: { joiningDate: 'desc' },
-            take: 1,
-            include: {
-              company: true,
-              designation: true,
-              department: true,
-            },
+  async findByIdWithCurrentEmployment(id: string): Promise<Employee> {
+    return await this.prisma.employee.findUnique({
+      where: { id },
+      include: {
+        employmentHistories: {
+          orderBy: { joiningDate: 'desc' },
+          take: 1,
+          include: {
+            company: true,
+            designation: true,
+            department: true,
           },
         },
-      });
-    } catch (error) {
-      // this.logger.error(`Error finding employee ${id} with current employment: ${error.message}`, error.stack);
-      throw error;
-    }
+      },
+    });
   }
 
   async findMany(ids: string[]): Promise<Employee[]> {
@@ -382,117 +380,106 @@ export class EmployeeRepository {
     }
   }
 
-  async getAllEmployees(params: GetAllEmployeesDto) {
-    try {
-      const {
-        page,
-        limit,
-        searchText,
-        designationId,
-        employeeDepartmentId,
-        companyId,
-        gender,
-        category,
-        highestEducationQualification,
-        minAge,
-        maxAge,
-        sortBy,
-        sortOrder,
-        startDate,
-        endDate,
-      } = params;
+  async getAllEmployees(
+    params: GetAllEmployeesDto,
+  ): Promise<{ data: Employee[]; total: number }> {
+    const {
+      page,
+      limit,
+      searchText,
+      designationId,
+      employeeDepartmentId,
+      companyId,
+      gender,
+      category,
+      highestEducationQualification,
+      minAge,
+      maxAge,
+      sortBy,
+      sortOrder,
+      startDate,
+      endDate,
+    } = params;
 
-      const where: any = {};
+    const where: any = {};
 
-      if (searchText) {
-        where.OR = [
-          { firstName: { contains: searchText, mode: 'insensitive' } },
-          { lastName: { contains: searchText, mode: 'insensitive' } },
-          { id: { contains: searchText, mode: 'insensitive' } },
-        ];
-      }
-      if (gender) where.gender = gender;
-      if (category) where.category = category;
-      if (highestEducationQualification)
-        where.highestEducationQualification = highestEducationQualification;
-      if (minAge || maxAge) {
-        where.age = {};
-        if (minAge) where.age.gte = minAge;
-        if (maxAge) where.age.lte = maxAge;
-      }
+    if (searchText) {
+      where.OR = [
+        { firstName: { contains: searchText, mode: 'insensitive' } },
+        { lastName: { contains: searchText, mode: 'insensitive' } },
+        { id: { contains: searchText, mode: 'insensitive' } },
+      ];
+    }
+    if (gender) where.gender = gender;
+    if (category) where.category = category;
+    if (highestEducationQualification)
+      where.highestEducationQualification = highestEducationQualification;
+    if (minAge || maxAge) {
+      where.age = {};
+      if (minAge) where.age.gte = minAge;
+      if (maxAge) where.age.lte = maxAge;
+    }
 
-      // Employment history filters
-      if (
-        designationId ||
-        employeeDepartmentId ||
-        companyId ||
-        startDate ||
-        endDate
-      ) {
-        where.employmentHistories = {
-          some: {
-            AND: [
-              designationId ? { designationId } : {},
-              employeeDepartmentId
-                ? { departmentId: employeeDepartmentId }
-                : {},
-              companyId ? { companyId } : {},
-              startDate || endDate
-                ? {
-                    OR: [
-                      { leavingDate: null },
-                      { leavingDate: { gte: startDate || undefined } },
-                    ],
-                    joiningDate: { lte: endDate || undefined },
-                  }
-                : {},
-            ],
-          },
-        };
-      }
+    // Employment history filters
+    if (
+      designationId ||
+      employeeDepartmentId ||
+      companyId ||
+      startDate ||
+      endDate
+    ) {
+      where.employmentHistories = {
+        some: {
+          AND: [
+            designationId ? { designationId } : {},
+            employeeDepartmentId ? { departmentId: employeeDepartmentId } : {},
+            companyId ? { companyId } : {},
+            startDate || endDate
+              ? {
+                  OR: [
+                    { leavingDate: null },
+                    { leavingDate: { gte: startDate || undefined } },
+                  ],
+                  joiningDate: { lte: endDate || undefined },
+                }
+              : {},
+          ],
+        },
+      };
+    }
 
-      const orderBy: any = {};
-      if (sortBy) {
-        orderBy[sortBy] = sortOrder || 'asc';
-      }
+    const orderBy: any = {};
+    if (sortBy) {
+      orderBy[sortBy] = sortOrder || 'asc';
+    }
 
-      const [data, total] = await Promise.all([
-        this.prisma.employee.findMany({
-          where,
-          orderBy,
-          skip: (page - 1) * limit,
-          take: limit,
-          include: {
-            employmentHistories: {
-              orderBy: { joiningDate: 'desc' },
-              include: {
-                company: true,
-                designation: true,
-                department: true,
-              },
+    const [data, total] = await Promise.all([
+      this.prisma.employee.findMany({
+        where,
+        orderBy,
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          employmentHistories: {
+            orderBy: { joiningDate: 'desc' },
+            include: {
+              company: true,
+              designation: true,
+              department: true,
             },
           },
-        }),
-        this.prisma.employee.count({ where }),
-      ]);
+        },
+      }),
+      this.prisma.employee.count({ where }),
+    ]);
 
-      return { data, total };
-    } catch (error) {
-      console.error(error);
-      return error;
-    }
+    return { data, total };
   }
 
-  async deleteEmployeeById(id: string) {
-    try {
-      const deleteEmployeeResponse = await this.prisma.employee.delete({
-        where: { id },
-      });
-      return deleteEmployeeResponse;
-    } catch (error) {
-      console.error('Error while deleting')
-      console.error(error)
-      return error;
-    }
+  async deleteEmployeeById(id: string): Promise<Employee> {
+    const deleteEmployeeResponse = await this.prisma.employee.delete({
+      where: { id },
+    });
+    return deleteEmployeeResponse;
   }
 }

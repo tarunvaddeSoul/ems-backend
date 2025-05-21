@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpStatus,
   Injectable,
   Logger,
   NotFoundException,
@@ -17,6 +18,8 @@ import { MailService } from './mail.service';
 import { ResetPasswordDTO } from './dto/reset-password.dto';
 import { DepartmentRepository } from 'src/departments/department.repository';
 import { Role, User } from '@prisma/client';
+import { IResponse } from 'src/types/response.interface';
+import { ITokens, IUser } from './interfaces/user.interface';
 
 @Injectable()
 export class UsersService {
@@ -28,35 +31,84 @@ export class UsersService {
     private mailService: MailService,
   ) {}
 
-  async login(loginDto: LoginDto): Promise<any> {
-    const { email, password } = loginDto;
-    const user = await this.usersRepository.findUserByEmail(email);
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+  async login(loginDto: LoginDto): Promise<IResponse<IUser>> {
+    try {
+      const { email, password } = loginDto;
+      const user = await this.usersRepository.findUserByEmail(email);
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        throw new UnauthorizedException('Password does not match');
+      }
+      const tokens = await this.generateUserTokens(user.id, user.role);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Login successful',
+        data: {
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            mobileNumber: user.mobileNumber,
+            role: user.role,
+            departmentId: user.departmentId,
+            createdAt: user.createdAt,
+          },
+          tokens,
+        },
+      };
+    } catch (error) {
+      throw error;
     }
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      throw new UnauthorizedException('Password does not match');
-    }
-    return this.generateUserTokens(user.id, user.role);
   }
 
-  async register(user: RegisterDto): Promise<any> {
-    const existingUser = await this.usersRepository.findUserByEmail(user.email);
-    if (existingUser) {
-      throw new ConflictException('Email already in use.');
+  async register(user: RegisterDto): Promise<IResponse<IUser>> {
+    try {
+      const existingUser = await this.usersRepository.findUserByEmail(
+        user.email,
+      );
+      if (existingUser) {
+        throw new ConflictException('Email already in use.');
+      }
+      const department = await this.departmentRepository.getUserDepartmentById(
+        user.departmentId,
+      );
+      if (!department) {
+        throw new NotFoundException(
+          `Department with ID: ${user.departmentId} not found.`,
+        );
+      }
+      const hashedPassword = await bcrypt.hash(user.password, 10);
+      user.password = hashedPassword;
+      const newUser = await this.usersRepository.createUser(user);
+      const tokens = await this.generateUserTokens(newUser.id, newUser.role);
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: 'User registered successfully',
+        data: {
+          user: {
+            id: newUser.id,
+            name: newUser.name,
+            email: newUser.email,
+            mobileNumber: newUser.mobileNumber,
+            role: newUser.role,
+            departmentId: newUser.departmentId,
+            createdAt: newUser.createdAt,
+          },
+          tokens,
+        },
+      };
+    } catch (error) {
+      throw error;
     }
-    const department = await this.departmentRepository.getUserDepartmentById(user.departmentId);
-    if (!department) {
-      throw new NotFoundException(`Department with ID: ${user.departmentId} not found.`);
-    }
-    const hashedPassword = await bcrypt.hash(user.password, 10);
-    user.password = hashedPassword;
-    const newUser = await this.usersRepository.createUser(user);
-    return this.generateUserTokens(newUser.id, newUser.role);
   }
 
-  async generateUserTokens(userId: string, role: Role) {
+  private async generateUserTokens(
+    userId: string,
+    role: Role,
+  ): Promise<ITokens> {
     const accessToken = await this.jwtService.sign(
       { userId, role },
       { expiresIn: '6h' },
@@ -86,7 +138,12 @@ export class UsersService {
     const userRole = await this.getUserRole(userId);
     return userRole === role;
   }
-  async storeRefreshToken(token: string, userId: string) {
+  async storeRefreshToken(
+    token: string,
+    userId: string,
+  ): Promise<{
+    message: string;
+  }> {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 3);
     await this.usersRepository.storeRefreshToken(token, userId, expiryDate);
@@ -101,9 +158,30 @@ export class UsersService {
       if (!refreshTokenResponse) {
         throw new UnauthorizedException('Token invalid.');
       }
-      const user = await this.usersRepository.findUserById(refreshTokenResponse.userId);
+      const user = await this.usersRepository.findUserById(
+        refreshTokenResponse.userId,
+      );
 
-      return this.generateUserTokens(refreshTokenResponse.userId, user.role);
+      const tokens = await this.generateUserTokens(
+        refreshTokenResponse.userId,
+        user.role,
+      );
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Token refreshed successfully',
+        data: {
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            mobileNumber: user.mobileNumber,
+            role: user.role,
+            departmentId: user.departmentId,
+            createdAt: user.createdAt,
+          },
+          tokens,
+        },
+      };
     } catch (error) {
       throw error;
     }
@@ -137,9 +215,15 @@ export class UsersService {
         checkUserExists.id,
         checkUserExists,
       );
-      if (updateUser) {
-        return { status: 200, message: 'Password successfully updated!' };
+      if (!updateUser) {
+        throw new BadRequestException(
+          'Failed to update password. Please try again.',
+        );
       }
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Password successfully updated!',
+      };
     } catch (error) {
       this.logger.error(`Failed to change user password: ${error.message}`);
       throw error;
@@ -169,14 +253,17 @@ export class UsersService {
 
       // Send email with reset link
       await this.mailService.sendForgotPasswordEmail(email, resetToken);
-      return { status: 200, message: 'Email sent!' };
+      return { statusCode: 200, message: 'Email sent!' };
     } catch (error) {
       console.error('Error in forgotPassword:', error);
       throw error;
     }
   }
 
-  async resetPassword(resetPasswordDto: ResetPasswordDTO) {
+  async resetPassword(resetPasswordDto: ResetPasswordDTO): Promise<{
+    statusCode: number;
+    message: string;
+  }> {
     try {
       const { resetToken, newPassword } = resetPasswordDto;
       const token = await this.usersRepository.getResetToken(resetToken);
@@ -199,7 +286,7 @@ export class UsersService {
       // Delete the reset token
       await this.usersRepository.deleteResetToken(token.id);
 
-      return { status: 200, message: 'Password reset successful!' };
+      return { statusCode: 200, message: 'Password reset successful!' };
     } catch (error) {
       console.error('Error in resetPassword:', error);
       throw error;
@@ -217,30 +304,48 @@ export class UsersService {
     }
   }
 
-  async getUserProfile(userId: string): Promise<Partial<User>> {
+  async getUserProfile(
+    userId: string,
+  ): Promise<IResponse<Omit<User, 'password'>>> {
     try {
       const user = await this.usersRepository.findUserById(userId);
       if (!user) {
         throw new NotFoundException(`User with ID ${userId} not found`);
       }
-      // Remove sensitive information
-      const { password, ...userProfile } = user;
-      return userProfile;
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'User profile fetched successfully',
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          mobileNumber: user.mobileNumber,
+          role: user.role,
+          departmentId: user.departmentId,
+          createdAt: user.createdAt,
+        },
+      };
     } catch (error) {
       this.logger.error(`Failed to fetch user profile: ${error.message}`);
       throw error;
     }
   }
 
-  async getCurrentUser(userId: string): Promise<Partial<User>> {
+  async getCurrentUser(userId: string): Promise<IResponse<Partial<User>>> {
     try {
       const user = await this.usersRepository.findUserById(userId);
       if (!user) {
         throw new NotFoundException(`User with ID ${userId} not found`);
       }
       // Remove sensitive information
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...currentUser } = user;
-      return currentUser;
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Current user fetched successfully',
+        data: currentUser,
+      };
     } catch (error) {
       this.logger.error(`Failed to fetch current user: ${error.message}`);
       throw error;

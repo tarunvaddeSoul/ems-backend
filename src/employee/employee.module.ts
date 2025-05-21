@@ -20,7 +20,7 @@ import { DepartmentRepository } from 'src/departments/department.repository';
     Logger,
     CompanyRepository,
     DesignationRepository,
-    DepartmentRepository
+    DepartmentRepository,
   ],
 })
 export class EmployeeModule {}

@@ -1,9 +1,15 @@
-import { $Enums } from "@prisma/client";
-import { Category, EducationQualification, Gender, Status, Title } from "../enum/employee.enum";
+import { $Enums } from '@prisma/client';
+import {
+  Category,
+  EducationQualification,
+  Gender,
+  Status,
+  Title,
+} from '../enum/employee.enum';
 
 export interface IEmployee {
   id?: string;
-  title?: Title| $Enums.Title;
+  title?: Title | $Enums.Title;
   firstName?: string;
   lastName?: string;
   designationName?: string;

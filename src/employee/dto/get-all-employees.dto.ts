@@ -83,7 +83,6 @@ export class GetAllEmployeesDto {
   @IsEnum(SortOrder)
   sortOrder?: SortOrder;
 
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateFormat({ message: 'startDate must be in the format DD-MM-YYYY' })

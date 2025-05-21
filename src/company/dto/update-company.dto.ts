@@ -1,8 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsEnum, IsOptional, IsInt, Min } from 'class-validator';
-import { PresentDaysCount, PFOptions, ESICOptions, BONUSOptions, LWFOptions } from '../enum/company.enum';
+import {
+  PresentDaysCount,
+  PFOptions,
+  ESICOptions,
+  BONUSOptions,
+  LWFOptions,
+} from '../enum/company.enum';
 import { Transform } from 'class-transformer';
-
 
 export class UpdateCompanyDto {
   @ApiProperty({ required: false })

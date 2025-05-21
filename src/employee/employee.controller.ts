@@ -1,7 +1,6 @@
 import {
   Controller,
   Post,
-  Put,
   Get,
   Param,
   Body,
@@ -12,8 +11,8 @@ import {
   HttpStatus,
   Delete,
   Query,
-  HttpException,
   Patch,
+  Res,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { EmployeeService } from './employee.service';
@@ -22,7 +21,6 @@ import {
   ApiConsumes,
   ApiOperation,
   ApiResponse,
-  ApiBody,
   ApiParam,
 } from '@nestjs/swagger';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -38,21 +36,18 @@ import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { DeleteEmployeesDto } from './dto/delete-employees.dto';
 import { GetAllEmployeesDto } from './dto/get-all-employees.dto';
 import {
-  Employee,
-  EmployeeDocumentUploads,
-  EmploymentHistory,
-} from '@prisma/client';
-import {
   CreateEmploymentHistoryDto,
   LeavingDateDto,
   UpdateEmploymentHistoryDto,
 } from './dto/employment-history.dto';
+import { Response } from 'express';
 
 @Controller('employees')
 @UseInterceptors(TransformInterceptor)
 @ApiTags('Employees')
 export class EmployeeController {
   constructor(private readonly employeeService: EmployeeService) {}
+
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -80,6 +75,7 @@ export class EmployeeController {
     ]),
   )
   async createEmployee(
+    @Res() res: Response,
     @Body() data: CreateEmployeeDto,
     @UploadedFiles()
     files: {
@@ -90,8 +86,8 @@ export class EmployeeController {
       markSheet?: Express.Multer.File[];
       otherDocument?: Express.Multer.File[];
     },
-  ) {
-    return this.employeeService.createEmployee(
+  ): Promise<Response> {
+    const response = await this.employeeService.createEmployee(
       data,
       files.photo ? files.photo[0] : null,
       files.aadhaar ? files.aadhaar[0] : null,
@@ -100,6 +96,7 @@ export class EmployeeController {
       files.markSheet ? files.markSheet[0] : null,
       files.otherDocument ? files.otherDocument[0] : null,
     );
+    return res.status(response.statusCode).json(response);
   }
 
   @Patch(':id')
@@ -110,10 +107,15 @@ export class EmployeeController {
   })
   @ApiResponse({ status: 404, description: 'Employee not found.' })
   async updateEmployee(
+    @Res() res: Response,
     @Param('id') id: string,
     @Body() updateEmployeeDto: UpdateEmployeeDto,
-  ): Promise<{ message: string; data: Employee }> {
-    return this.employeeService.updateEmployee(id, updateEmployeeDto);
+  ): Promise<Response> {
+    const response = await this.employeeService.updateEmployee(
+      id,
+      updateEmployeeDto,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Patch(':id/contact-details')
@@ -123,10 +125,15 @@ export class EmployeeController {
     description: 'The employee contact details have been successfully updated.',
   })
   async updateEmployeeContactDetails(
+    @Res() res: Response,
     @Param('id') id: string,
     @Body() updateDto: UpdateEmployeeContactDetailsDto,
-  ) {
-    return this.employeeService.updateEmployeeContactDetails(id, updateDto);
+  ): Promise<Response> {
+    const response = await this.employeeService.updateEmployeeContactDetails(
+      id,
+      updateDto,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Patch(':id/bank-details')
@@ -136,10 +143,15 @@ export class EmployeeController {
     description: 'The employee bank details have been successfully updated.',
   })
   async updateEmployeeBankDetails(
+    @Res() res: Response,
     @Param('id') id: string,
     @Body() updateDto: UpdateEmployeeBankDetailsDto,
-  ) {
-    return this.employeeService.updateEmployeeBankDetails(id, updateDto);
+  ): Promise<Response> {
+    const response = await this.employeeService.updateEmployeeBankDetails(
+      id,
+      updateDto,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Patch(':id/additional-details')
@@ -150,10 +162,15 @@ export class EmployeeController {
       'The employee additional details have been successfully updated.',
   })
   async updateEmployeeAdditionalDetails(
+    @Res() res: Response,
     @Param('id') id: string,
     @Body() updateDto: UpdateEmployeeAdditionalDetailsDto,
-  ) {
-    return this.employeeService.updateEmployeeAdditionalDetails(id, updateDto);
+  ): Promise<Response> {
+    const response = await this.employeeService.updateEmployeeAdditionalDetails(
+      id,
+      updateDto,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Patch(':id/reference-details')
@@ -164,10 +181,15 @@ export class EmployeeController {
       'The employee reference details have been successfully updated.',
   })
   async updateEmployeeReferenceDetails(
+    @Res() res: Response,
     @Param('id') id: string,
     @Body() updateDto: UpdateEmployeeReferenceDetailsDto,
-  ) {
-    return this.employeeService.updateEmployeeReferenceDetails(id, updateDto);
+  ): Promise<Response> {
+    const response = await this.employeeService.updateEmployeeReferenceDetails(
+      id,
+      updateDto,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Patch(':id/document-uploads')
@@ -189,6 +211,7 @@ export class EmployeeController {
     ]),
   )
   async updateEmployeeDocumentUploads(
+    @Res() res: Response,
     @Param('id') id: string,
     @UploadedFiles()
     files: {
@@ -200,7 +223,7 @@ export class EmployeeController {
       otherDocument?: Express.Multer.File[];
     },
     @Body() updateDto: UpdateEmployeeDocumentUploadsDto,
-  ): Promise<{ message: string; data: EmployeeDocumentUploads }> {
+  ): Promise<Response> {
     const updatedDto = {
       ...updateDto,
       photo: files.photo?.[0],
@@ -210,7 +233,11 @@ export class EmployeeController {
       markSheet: files.markSheet?.[0],
       otherDocument: files.otherDocument?.[0],
     };
-    return this.employeeService.updateEmployeeDocumentUploads(id, updatedDto);
+    const response = await this.employeeService.updateEmployeeDocumentUploads(
+      id,
+      updatedDto,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Post(':employeeId/employment-history')
@@ -220,11 +247,15 @@ export class EmployeeController {
     description: 'The employment history record has been successfully created.',
   })
   async createEmploymentHistory(
+    @Res() res: Response,
     @Param('employeeId') employeeId: string,
     @Body() createDto: CreateEmploymentHistoryDto,
-  ): Promise<{ message: string; data: EmploymentHistory }> {
+  ): Promise<Response> {
     createDto.employeeId = employeeId;
-    return this.employeeService.createEmploymentHistory(createDto);
+    const response = await this.employeeService.createEmploymentHistory(
+      createDto,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Patch('employment-history/:id')
@@ -234,10 +265,15 @@ export class EmployeeController {
     description: 'The employment history record has been successfully updated.',
   })
   async updateEmploymentHistory(
+    @Res() res: Response,
     @Param('id') id: string,
     @Body() updateDto: UpdateEmploymentHistoryDto,
-  ): Promise<{ message: string; data: EmploymentHistory }> {
-    return this.employeeService.updateEmploymentHistory(id, updateDto);
+  ): Promise<Response> {
+    const response = await this.employeeService.updateEmploymentHistory(
+      id,
+      updateDto,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Patch(':employeeId/close-employment')
@@ -247,13 +283,15 @@ export class EmployeeController {
     description: 'The current employment record has been successfully closed.',
   })
   async closeCurrentEmployment(
+    @Res() res: Response,
     @Param('employeeId') employeeId: string,
     @Body() data: LeavingDateDto,
-  ): Promise<{ message: string; data: EmploymentHistory }> {
-    return this.employeeService.closeCurrentEmployment(
+  ): Promise<Response> {
+    const response = await this.employeeService.closeCurrentEmployment(
       employeeId,
       data.leavingDate,
     );
+    return res.status(response.statusCode).json(response);
   }
 
   @Get(':employeeId/employment-history')
@@ -262,8 +300,14 @@ export class EmployeeController {
     status: 200,
     description: 'The employment history has been successfully retrieved.',
   })
-  async getEmploymentHistory(@Param('employeeId') employeeId: string) {
-    return this.employeeService.getEmploymentHistory(employeeId);
+  async getEmploymentHistory(
+    @Res() res: Response,
+    @Param('employeeId') employeeId: string,
+  ): Promise<Response> {
+    const response = await this.employeeService.getEmploymentHistory(
+      employeeId,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Get(':employeeId/contact-details')
@@ -273,8 +317,14 @@ export class EmployeeController {
     status: 200,
     description: 'Employee contact details retrieved successfully',
   })
-  async getEmployeeContactDetails(@Param('employeeId') employeeId: string) {
-    return this.employeeService.getEmployeeContactDetails(employeeId);
+  async getEmployeeContactDetails(
+    @Res() res: Response,
+    @Param('employeeId') employeeId: string,
+  ): Promise<Response> {
+    const response = await this.employeeService.getEmployeeContactDetails(
+      employeeId,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Get(':employeeId/bank-details')
@@ -284,8 +334,14 @@ export class EmployeeController {
     status: 200,
     description: 'Employee bank details retrieved successfully',
   })
-  async getEmployeeBankDetails(@Param('employeeId') employeeId: string) {
-    return this.employeeService.getEmployeeBankDetails(employeeId);
+  async getEmployeeBankDetails(
+    @Res() res: Response,
+    @Param('employeeId') employeeId: string,
+  ): Promise<Response> {
+    const response = await this.employeeService.getEmployeeBankDetails(
+      employeeId,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Get(':employeeId/additional-details')
@@ -295,8 +351,14 @@ export class EmployeeController {
     status: 200,
     description: 'Employee additional details retrieved successfully',
   })
-  async getEmployeeAdditionalDetails(@Param('employeeId') employeeId: string) {
-    return this.employeeService.getEmployeeAdditionalDetails(employeeId);
+  async getEmployeeAdditionalDetails(
+    @Res() res: Response,
+    @Param('employeeId') employeeId: string,
+  ): Promise<Response> {
+    const response = await this.employeeService.getEmployeeAdditionalDetails(
+      employeeId,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Get(':employeeId/reference-details')
@@ -306,8 +368,14 @@ export class EmployeeController {
     status: 200,
     description: 'Employee reference details retrieved successfully',
   })
-  async getEmployeeReferenceDetails(@Param('employeeId') employeeId: string) {
-    return this.employeeService.getEmployeeReferenceDetails(employeeId);
+  async getEmployeeReferenceDetails(
+    @Res() res: Response,
+    @Param('employeeId') employeeId: string,
+  ): Promise<Response> {
+    const response = await this.employeeService.getEmployeeReferenceDetails(
+      employeeId,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Get(':employeeId/document-uploads')
@@ -317,8 +385,14 @@ export class EmployeeController {
     status: 200,
     description: 'Employee document uploads retrieved successfully',
   })
-  async getEmployeeDocumentUploads(@Param('employeeId') employeeId: string) {
-    return this.employeeService.getEmployeeDocumentUploads(employeeId);
+  async getEmployeeDocumentUploads(
+    @Res() res: Response,
+    @Param('employeeId') employeeId: string,
+  ): Promise<Response> {
+    const response = await this.employeeService.getEmployeeDocumentUploads(
+      employeeId,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Get(':id')
@@ -335,8 +409,12 @@ export class EmployeeController {
     status: HttpStatus.NOT_FOUND,
     description: 'Employee not found.',
   })
-  async getEmployeeById(@Param('id') id: string) {
-    return this.employeeService.getEmployeeById(id);
+  async getEmployeeById(
+    @Res() res: Response,
+    @Param('id') id: string,
+  ): Promise<Response> {
+    const response = await this.employeeService.getEmployeeById(id);
+    return res.status(response.statusCode).json(response);
   }
 
   @Get('active/:employeeId')
@@ -347,17 +425,18 @@ export class EmployeeController {
   })
   @ApiResponse({ status: 404, description: 'No active employment found.' })
   @ApiParam({ name: 'employeeId', description: 'Employee ID' })
-  async getActiveEmployment(@Param('employeeId') employeeId: string) {
-    const activeEmployment = await this.employeeService.getActiveEmployment(
-      employeeId,
-    );
-    if (!activeEmployment) {
-      throw new HttpException(
-        'No active employment found',
-        HttpStatus.NOT_FOUND,
-      );
+  async getActiveEmployment(
+    @Res() res: Response,
+    @Param('employeeId') employeeId: string,
+  ): Promise<Response> {
+    const response = await this.employeeService.getActiveEmployment(employeeId);
+    if (!response.data) {
+      return res.status(HttpStatus.NOT_FOUND).json({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: 'No active employment found',
+      });
     }
-    return activeEmployment;
+    return res.status(response.statusCode).json(response);
   }
 
   @Delete(':id')
@@ -374,8 +453,12 @@ export class EmployeeController {
     status: HttpStatus.NOT_FOUND,
     description: 'Employee not found.',
   })
-  async deleteEmployeeById(@Param('id') id: string) {
-    return this.employeeService.deleteEmployeeById(id);
+  async deleteEmployeeById(
+    @Res() res: Response,
+    @Param('id') id: string,
+  ): Promise<Response> {
+    const response = await this.employeeService.deleteEmployeeById(id);
+    return res.status(response.statusCode).json(response);
   }
 
   @Version('1')
@@ -386,9 +469,13 @@ export class EmployeeController {
     description: 'Delete multiple employees by their IDs',
   })
   async deleteMultipleEmployees(
+    @Res() res: Response,
     @Body() deleteEmployeesDto: DeleteEmployeesDto,
-  ) {
-    return this.employeeService.deleteMultipleEmployees(deleteEmployeesDto.ids);
+  ): Promise<Response> {
+    const response = await this.employeeService.deleteMultipleEmployees(
+      deleteEmployeesDto.ids,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Get()
@@ -402,7 +489,11 @@ export class EmployeeController {
     status: HttpStatus.OK,
     description: 'Employees retrieved successfully.',
   })
-  async getAllEmployees(@Query() queryParams: GetAllEmployeesDto) {
-    return this.employeeService.getAllEmployees(queryParams);
+  async getAllEmployees(
+    @Res() res: Response,
+    @Query() queryParams: GetAllEmployeesDto,
+  ): Promise<Response> {
+    const response = await this.employeeService.getAllEmployees(queryParams);
+    return res.status(response.statusCode).json(response);
   }
 }

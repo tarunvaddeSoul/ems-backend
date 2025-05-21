@@ -356,3 +356,492 @@ which i want to handle
 }
 
 http://localhost:3003/users/reset-password
+
+
+
+You are a senior backend developer specialized in nestjs, typescript, postgres, prisma and system design and also experience in developing frontend too. you are very professional and develop production grade apis.
+
+<context>
+Tulsyan Security Solutions (TSS) requires a web-based management system to transition their security agency operations from offline to online. The system will manage employees (security guards, helpers), client companies, attendance tracking, and payroll processing.
+</context>
+
+<aim>
+create an api that takes basic information of a company like company name, status, contact person name, contact person number, onboarding date, address and also their salary template for the employees who are going to work for them under us because we outsource our employees to work at different companies
+</aim>
+
+<current_api>
+### schema.prisma ###
+model Company {
+  id                    String           @id @default(uuid())
+  name                  String
+  address               String
+  contactPersonName     String
+  contactPersonNumber   String
+  status                String
+  companyOnboardingDate String
+  salaryTemplates       SalaryTemplate[]
+  salaryRecords         SalaryRecord[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  PayrollPeriod         PayrollPeriod[]
+  Attendance            Attendance[]
+  Salary                Salary[]
+
+  EmploymentHistory EmploymentHistory[]
+}
+model SalaryTemplate {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  fields    Json // Store the enabled/disabled status and default values
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model SalaryRecord {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id])
+  month      DateTime
+  salaryData Json // Store all salary-related fields
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, companyId, month])
+}
+
+model PayrollPeriod {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  startDate DateTime
+  endDate   DateTime
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Attendance {
+  id           String   @id @default(uuid())
+  employeeId   String
+  month        String
+  presentCount Int
+  companyId    String?
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  company      Company? @relation(fields: [companyId], references: [id])
+
+  @@unique([employeeId, companyId, month])
+}
+
+
+model Salary {
+  id                    String   @id @default(uuid())
+  month                 String // Format: MM-YYYY
+  monthlySalary         Float
+  dutyDone              Int
+  wagesPerDay           Float
+  basicPay              Float
+  epfWages              Float
+  bonus                 Float
+  grossSalary           Float
+  pf                    Float
+  esic                  Float
+  advance               Float
+  uniform               Float
+  penalty               Float
+  lwf                   Float
+  otherDeductions       Float
+  otherDeductionsRemark String?
+  allowance             Float
+  allowanceRemark       String?
+  totalDeductions       Float
+  netSalary             Float
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+  company    Company  @relation(fields: [companyId], references: [id])
+  companyId  String
+
+  @@unique([employeeId, companyId, month])
+}
+
+
+model EmploymentHistory {
+  id              String             @id @default(uuid())
+  employeeId      String?
+  employee        Employee?          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  companyName     String
+  designationName String
+  departmentName  String
+  companyId       String
+  company         Company            @relation(fields: [companyId], references: [id])
+  designationId   String
+  designation     Designation        @relation(fields: [designationId], references: [id])
+  departmentId    String
+  department      EmployeeDepartment @relation(fields: [departmentId], references: [id])
+  salary          Float
+  joiningDate     String
+  leavingDate     String?
+  status          String
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+### CONTROLLER METHOD ###
+
+  @HttpCode(HttpStatus.CREATED)
+  @Post()
+  @ApiOperation({ summary: 'Create a new company' })
+  @ApiResponse({
+    status: 201,
+    description: 'The company has been successfully created.',
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  async createCompany(
+    @Res() res: Response,
+    @Body() data: CreateCompanyDto,
+  ): Promise<Response> {
+    const response = await this.companyService.createCompany(data);
+    return res.status(response.statusCode).json(response);
+  }
+
+  ### DTO ### 
+
+  import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
+import {
+  IsString,
+  ValidateNested,
+  IsOptional,
+  IsBoolean,
+  IsEnum,
+} from 'class-validator';
+import { Type, Transform } from 'class-transformer';
+import { IsDateFormat } from 'src/common/validators/date-format.decorator';
+import { Status } from 'src/employee/enum/employee.enum';
+
+class SalaryTemplateFieldDto {
+  @ApiProperty()
+  @IsBoolean()
+  enabled: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  value?: string;
+}
+
+export class SalaryTemplateDto {
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  name: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  fatherName: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  companyName: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  designation: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  monthlyRate: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  basicDuty: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  dutyDone: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  wagesPerDay: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  basicPay: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  epfWages: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  otherAllowance: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  otherAllowanceRemark: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  bonus: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  grossSalary: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  pf: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  esic: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  advance: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  uniform: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  advanceGivenBy: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  penalty: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  lwf: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  otherDeductions: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  otherDeductionsRemark: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  totalDeductions: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  netSalary: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  uanNumber: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  pfPaidStatus: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  esicNumber: SalaryTemplateFieldDto;
+
+  @ApiProperty({ type: () => SalaryTemplateFieldDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateFieldDto)
+  esicFilingStatus: SalaryTemplateFieldDto;
+}
+
+export class CreateCompanyDto {
+  @ApiProperty({ required: true })
+  @Transform(({ value }) => value?.toUpperCase())
+  @IsString()
+  name: string;
+
+  @ApiProperty({ required: true })
+  @Transform(({ value }) => value?.toUpperCase())
+  @IsString()
+  address: string;
+
+  @ApiProperty({ required: true })
+  @Transform(({ value }) => value?.toUpperCase())
+  @IsString()
+  contactPersonName: string;
+
+  @ApiProperty({ required: true })
+  @Transform(({ value }) => value?.toUpperCase())
+  @IsString()
+  contactPersonNumber: string;
+
+  @ApiProperty({ required: true, enum: Status })
+  @IsEnum(Status)
+  status: Status;
+
+  @ApiProperty({ required: true })
+  @IsDateFormat({
+    message: 'companyOnboardingDate must be in the format DD-MM-YYYY',
+  })
+  companyOnboardingDate: string;
+
+  @ApiProperty({ required: true, type: () => SalaryTemplateDto })
+  @ValidateNested()
+  @Type(() => SalaryTemplateDto)
+  salaryTemplates: SalaryTemplateDto[];
+}
+
+export class UpdateCompanyDto extends PartialType(
+  OmitType(CreateCompanyDto, ['salaryTemplates'] as const),
+) {
+  @ApiProperty({ required: false, type: () => SalaryTemplateDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SalaryTemplateDto)
+  salaryTemplates?: SalaryTemplateDto[];
+}
+
+
+### SERVICE ###
+  async createCompany(data: CreateCompanyDto): Promise<IResponse<Company>> {
+    try {
+      const companyExists = await this.companyRepository.companyExists(
+        data.name,
+      );
+      if (companyExists) {
+        throw new ConflictException(
+          `Company with name: ${data.name} already exists.`,
+        );
+      }
+      const createCompanyResponse = await this.companyRepository.create(data);
+      if (!createCompanyResponse) {
+        throw new BadRequestException(`Error creating company`);
+      }
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: 'Company created successfully',
+        data: createCompanyResponse,
+      };
+    } catch (error) {
+      this.logger.error(`Error creating company`);
+      throw error;
+    }
+  }
+
+  ### REPOSITORY ###
+    async create(data: CreateCompanyDto): Promise<Company> {
+    const {
+      name,
+      address,
+      contactPersonName,
+      contactPersonNumber,
+      salaryTemplates,
+      status,
+      companyOnboardingDate,
+    } = data;
+
+    const company = await this.prisma.company.create({
+      data: {
+        name,
+        address,
+        contactPersonName,
+        contactPersonNumber,
+        status,
+        companyOnboardingDate,
+        salaryTemplates: {
+          create: {
+            fields: salaryTemplates as any,
+          },
+        },
+      },
+      include: {
+        salaryTemplates: true,
+      },
+    });
+
+    return company;
+  }
+
+</current_api>
+
+now this currently works but this is unacceptable and looks like a junior developer has written this with no production level handling, no vision for future changes 
+
+now for salary template fields configuration, i want some fields to be mandatory to be enabled with no rules like 
+<mandatory_to_enable_no_rules>
+s.no, 
+company name, 
+name, 
+designation, 
+monthly pay, 
+bonus, (allowance)
+gross salary, 
+PF12%, (deduction)
+ESIC0.75%, (deduction)
+Net salary
+Total deduction
+</mandatory_to_enable_no_rules>
+
+
+<mandatory_to_enable_with_rules>
+basic duty (ranging from 26 to 31),
+</mandatory_to_enable_with_rules>
+
+<optional fields with no rules>
+status,
+UAN no.
+PF Paid Status
+ESIC NO
+ESIC Filing status
+Bank account number
+IFSC Code
+Father name
+Wages per day 
+EPF Wages
+Advance (deduction)
+Uniform (deduction)
+Penalty (deduction)
+other deductions
+</optional fields with no rules>
+
+<optional fields with rules>
+other deductions (with remarks)
+Salary paid status (PAID, PENDING, HOLD)
+LWF (default value is 10)(deduction)
+</optional fields with rules>
+
+i also want a feature where the admin who is creating this company can configure a custom salary field
+
+
+in the end, the admin should be able to calculate payroll for all the employees working under this company using a calculate payroll api
+
+so in the calculate payroll api, we fetch the employees working under this company, we fetch the salary template, their allowances, their deductions and some fields like monthly pay will be fetched from employee database and one field basic duty will be fetched from the value admin entered ranging from 26 to 31
+
+
+so create createCompany API. Give me the code in full, starting from db model update, to dto (swagger configured), controller method, service method and repository method with proper error handling
+
+

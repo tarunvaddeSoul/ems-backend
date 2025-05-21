@@ -33,7 +33,9 @@ export class AttendanceService {
           `Employee with ID: ${markAttendanceDto.employeeId} not found.`,
         );
       }
-      const company = await this.companyRepository.findById(markAttendanceDto.companyId);
+      const company = await this.companyRepository.findById(
+        markAttendanceDto.companyId,
+      );
       if (!company) {
         throw new NotFoundException(
           `Company with ID ${markAttendanceDto.companyId} not found.`,
@@ -81,7 +83,7 @@ export class AttendanceService {
       for (const record of records) {
         const { employeeId, month, presentCount, companyId } = record;
         const attendanceRecord = await this.attendanceRepository.markAttendance(
-          { employeeId, month, presentCount, companyId }
+          { employeeId, month, presentCount, companyId },
         );
         attendanceRecords.push(attendanceRecord);
       }
@@ -95,22 +97,30 @@ export class AttendanceService {
     }
   }
 
-  async uploadAttendanceSheet(uploadAttendanceSheetDto: UploadAttendanceSheetDto, attendanceSheet: Express.Multer.File) {
+  async uploadAttendanceSheet(
+    uploadAttendanceSheetDto: UploadAttendanceSheetDto,
+    attendanceSheet: Express.Multer.File,
+  ) {
     try {
       const { companyId, month } = uploadAttendanceSheetDto;
       const company = await this.companyRepository.findById(companyId);
       if (!company) {
-        throw new NotFoundException(
-          `Company with ID ${companyId} not found.`,
-        );
+        throw new NotFoundException(`Company with ID ${companyId} not found.`);
       }
       const folder = `attendance-sheets/${company.name}`;
-      const attendanceSheetUrl = await this.uploadFile(attendanceSheet, `${folder}/${month}`);
-      const saveAttendanceSheetResponse = await this.attendanceRepository.saveAttendanceSheet(uploadAttendanceSheetDto, attendanceSheetUrl);
+      const attendanceSheetUrl = await this.uploadFile(
+        attendanceSheet,
+        `${folder}/${month}`,
+      );
+      const saveAttendanceSheetResponse =
+        await this.attendanceRepository.saveAttendanceSheet(
+          uploadAttendanceSheetDto,
+          attendanceSheetUrl,
+        );
       return {
         message: 'Attendance sheet uploaded successfully',
         data: saveAttendanceSheetResponse,
-      }
+      };
     } catch (error) {
       this.logger.error(`Error in uploadAttendanceSheet`, error.stack);
       throw error;
@@ -131,15 +141,14 @@ export class AttendanceService {
     try {
       const company = await this.companyRepository.findById(companyId);
       if (!company) {
-        throw new NotFoundException(
-          `Company with ID ${companyId} not found.`,
-        );
+        throw new NotFoundException(`Company with ID ${companyId} not found.`);
       }
-      const attendanceRecords = await this.attendanceRepository.getAttendanceRecordsByCompanyId(companyId);
-      if (attendanceRecords.length === 0) {
-        throw new NotFoundException(
-          `No attendance records found`,
+      const attendanceRecords =
+        await this.attendanceRepository.getAttendanceRecordsByCompanyId(
+          companyId,
         );
+      if (attendanceRecords.length === 0) {
+        throw new NotFoundException(`No attendance records found`);
       }
       return {
         message: 'Attendance records retrieved successfully',
@@ -153,17 +162,18 @@ export class AttendanceService {
 
   async getAttendanceRecordsByEmployeeId(employeeId: string) {
     try {
-      const employee = await this.employeeRepository.getEmployeeById(employeeId);
+      const employee = await this.employeeRepository.getEmployeeById(
+        employeeId,
+      );
       if (!employee) {
-        throw new NotFoundException(
-          `Employee with ID ${employee} not found.`,
-        );
+        throw new NotFoundException(`Employee with ID ${employee} not found.`);
       }
-      const attendanceRecords = await this.attendanceRepository.getAttendanceRecordsByEmployeeId(employeeId);
-      if (attendanceRecords.length === 0) {
-        throw new NotFoundException(
-          `No attendance records found`,
+      const attendanceRecords =
+        await this.attendanceRepository.getAttendanceRecordsByEmployeeId(
+          employeeId,
         );
+      if (attendanceRecords.length === 0) {
+        throw new NotFoundException(`No attendance records found`);
       }
       return {
         message: 'Attendance records retrieved successfully',
@@ -179,9 +189,7 @@ export class AttendanceService {
     try {
       const attendanceRecords = await this.attendanceRepository.getAll();
       if (attendanceRecords.length === 0) {
-        throw new NotFoundException(
-          `No attendance records found`,
-        );
+        throw new NotFoundException(`No attendance records found`);
       }
       return {
         message: 'Attendance records retrieved successfully',
@@ -193,13 +201,18 @@ export class AttendanceService {
     }
   }
 
-  async getAllAttendanceRecordsByCompanyIdAndMonth(companyId: string, month: string) {
+  async getAllAttendanceRecordsByCompanyIdAndMonth(
+    companyId: string,
+    month: string,
+  ) {
     try {
-      const attendanceRecords = await this.attendanceRepository.getAllAttendanceRecordsByCompanyIdAndMonth(companyId, month);
-      if (attendanceRecords.length === 0) {
-        throw new NotFoundException(
-          `No attendance records found`,
+      const attendanceRecords =
+        await this.attendanceRepository.getAllAttendanceRecordsByCompanyIdAndMonth(
+          companyId,
+          month,
         );
+      if (attendanceRecords.length === 0) {
+        throw new NotFoundException(`No attendance records found`);
       }
       return {
         message: 'Attendance records retrieved successfully',
@@ -209,7 +222,7 @@ export class AttendanceService {
       this.logger.error(`Error retrieving attendance records`, error.stack);
       throw error;
     }
-   }
+  }
 
   async deleteAttendanceById(id: string) {
     try {
@@ -233,9 +246,8 @@ export class AttendanceService {
 
   async deleteMultipleAttendances(ids: string[]) {
     try {
-      const attendances = await this.attendanceRepository.getAttendanceRecordsByIds(
-        ids,
-      );
+      const attendances =
+        await this.attendanceRepository.getAttendanceRecordsByIds(ids);
       if (attendances.length !== ids.length) {
         throw new NotFoundException('Some attendance records not found.');
       }

@@ -11,16 +11,16 @@ import {
   HttpStatus,
   Version,
   Query,
+  Res,
 } from '@nestjs/common';
 import { CompanyService } from './company.service';
-// import { CreateCompanyDto } from './dto/create-company.dto';
-// import { UpdateCompanyDto } from './dto/update-company.dto';
 import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { DeleteCompaniesDto } from './dto/delete-companies.dto';
 import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
 import { CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
 import { GetEmployeesResponseDto } from './dto/get-employees-response.dto';
+import { Response } from 'express';
 
 @Controller('companies')
 @UseInterceptors(TransformInterceptor)
@@ -36,8 +36,12 @@ export class CompanyController {
     description: 'The company has been successfully created.',
   })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
-  async createCompany(@Body() data: CreateCompanyDto) {
-    return this.companyService.createCompany(data);
+  async createCompany(
+    @Res() res: Response,
+    @Body() data: CreateCompanyDto,
+  ): Promise<Response> {
+    const response = await this.companyService.createCompany(data);
+    return res.status(response.statusCode).json(response);
   }
 
   @Get('employee-count')
@@ -46,10 +50,11 @@ export class CompanyController {
     summary: 'Get employees count',
     description: 'Get employees count by company',
   })
-  async getCompanyWithEmployeeCount() {
-    return await this.companyService.getCompanyWithEmployeeCount();
+  async getCompanyWithEmployeeCount(@Res() res: Response): Promise<Response> {
+    const response = await this.companyService.getCompanyWithEmployeeCount();
+    return res.status(response.statusCode).json(response);
   }
-  
+
   @HttpCode(HttpStatus.OK)
   @Put(':id')
   @ApiOperation({ summary: 'Update a company' })
@@ -58,17 +63,25 @@ export class CompanyController {
     description: 'The company has been successfully updated.',
   })
   @ApiResponse({ status: 404, description: 'Company not found.' })
-  async updateCompany(@Param('id') id: string, @Body() data: UpdateCompanyDto) {
-    return this.companyService.updateCompany(id, data);
+  async updateCompany(
+    @Res() res: Response,
+    @Param('id') id: string,
+    @Body() data: UpdateCompanyDto,
+  ): Promise<Response> {
+    const response = await this.companyService.updateCompany(id, data);
+    return res.status(response.statusCode).json(response);
   }
 
   @Get(':companyId/employees')
   @ApiResponse({ status: 200, type: [GetEmployeesResponseDto] })
-  async getEmployeesInACompany(@Param('companyId') companyId: string): Promise<{
-    message: string;
-    data: GetEmployeesResponseDto[];
-}> {
-    return this.companyService.getEmployeesInACompany(companyId);
+  async getEmployeesInACompany(
+    @Res() res: Response,
+    @Param('companyId') companyId: string,
+  ): Promise<Response> {
+    const response = await this.companyService.getEmployeesInACompany(
+      companyId,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -76,8 +89,12 @@ export class CompanyController {
   @ApiOperation({ summary: 'Get a company by id' })
   @ApiResponse({ status: 200, description: 'The company data.' })
   @ApiResponse({ status: 404, description: 'Company not found.' })
-  async getCompanyById(@Param('id') id: string) {
-    return this.companyService.getCompanyById(id);
+  async getCompanyById(
+    @Res() res: Response,
+    @Param('id') id: string,
+  ): Promise<Response> {
+    const response = await this.companyService.getCompanyById(id);
+    return res.status(response.statusCode).json(response);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -88,8 +105,12 @@ export class CompanyController {
       'Retrieves a list of companies with pagination, filtering, and sorting.',
   })
   @ApiResponse({ status: 200, description: 'The list of companies.' })
-  async getAllCompanies(@Query() queryParams: GetAllCompaniesDto) {
-    return this.companyService.getAllCompanies(queryParams);
+  async getAllCompanies(
+    @Res() res: Response,
+    @Query() queryParams: GetAllCompaniesDto,
+  ): Promise<Response> {
+    const response = await this.companyService.getAllCompanies(queryParams);
+    return res.status(response.statusCode).json(response);
   }
 
   @Delete(':id')
@@ -98,9 +119,11 @@ export class CompanyController {
   @ApiResponse({ status: 200, description: 'Company deleted successfully.' })
   @ApiResponse({ status: 404, description: 'Company not found.' })
   async deleteCompany(
+    @Res() res: Response,
     @Param('id') id: string,
-  ): Promise<{ message: string; data: any }> {
-    return this.companyService.deleteCompany(id);
+  ): Promise<Response> {
+    const response = await this.companyService.deleteCompany(id);
+    return res.status(response.statusCode).json(response);
   }
 
   @Version('1')
@@ -111,9 +134,12 @@ export class CompanyController {
     description: 'Delete multiple employees by their IDs',
   })
   async deleteMultipleEmployees(
+    @Res() res: Response,
     @Body() deleteCompaniesDto: DeleteCompaniesDto,
-  ) {
-    return this.companyService.deleteMultipleCompanies(deleteCompaniesDto.ids);
+  ): Promise<Response> {
+    const response = await this.companyService.deleteMultipleCompanies(
+      deleteCompaniesDto.ids,
+    );
+    return res.status(response.statusCode).json(response);
   }
-
 }

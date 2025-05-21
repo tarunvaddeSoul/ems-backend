@@ -21,7 +21,6 @@ export class BulkMarkAttendanceDto {
   })
   records: MarkAttendanceDto[];
 
-
   // @IsNotEmpty()
   // @IsString()
   // @ApiProperty({

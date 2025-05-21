@@ -19,7 +19,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     AttendanceModule,
     DepartmentModule,
     DesignationModule,
-    DashboardModule
+    DashboardModule,
   ],
 })
 export class AppModule {}

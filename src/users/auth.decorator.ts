@@ -9,6 +9,6 @@ export function Auth(...roles: Role[]) {
   return applyDecorators(
     UseGuards(AuthGuard, RolesGuard),
     ApiBearerAuth('Bearer'),
-    Roles(...roles)
+    Roles(...roles),
   );
 }

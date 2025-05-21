@@ -101,13 +101,16 @@ export class DesignationService {
 
   async getAll() {
     try {
-        const designations = await this.designationRepository.getAll();
-        if (designations.length === 0) {
-            throw new NotFoundException(`Designations not found.`);
-        }
-        return { message: 'Designations fetched successfully', data: designations };
+      const designations = await this.designationRepository.getAll();
+      if (designations.length === 0) {
+        throw new NotFoundException(`Designations not found.`);
+      }
+      return {
+        message: 'Designations fetched successfully',
+        data: designations,
+      };
     } catch (error) {
-        throw error;
+      throw error;
     }
   }
 }

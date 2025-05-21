@@ -16,7 +16,7 @@ export enum EducationQualification {
 
 export enum Gender {
   MALE = 'MALE',
-  FEMALE = 'FEMALE'
+  FEMALE = 'FEMALE',
 }
 
 export enum Title {

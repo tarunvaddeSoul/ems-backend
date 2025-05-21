@@ -1,5 +1,11 @@
 import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
-import { IsString, ValidateNested, IsOptional, IsBoolean, IsEnum } from 'class-validator';
+import {
+  IsString,
+  ValidateNested,
+  IsOptional,
+  IsBoolean,
+  IsEnum,
+} from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { IsDateFormat } from 'src/common/validators/date-format.decorator';
 import { Status } from 'src/employee/enum/employee.enum';
@@ -188,7 +194,9 @@ export class CreateCompanyDto {
   status: Status;
 
   @ApiProperty({ required: true })
-  @IsDateFormat({ message: 'companyOnboardingDate must be in the format DD-MM-YYYY' })
+  @IsDateFormat({
+    message: 'companyOnboardingDate must be in the format DD-MM-YYYY',
+  })
   companyOnboardingDate: string;
 
   @ApiProperty({ required: true, type: () => SalaryTemplateDto })
@@ -197,7 +205,9 @@ export class CreateCompanyDto {
   salaryTemplates: SalaryTemplateDto[];
 }
 
-export class UpdateCompanyDto extends PartialType(OmitType(CreateCompanyDto, ['salaryTemplates'] as const)) {
+export class UpdateCompanyDto extends PartialType(
+  OmitType(CreateCompanyDto, ['salaryTemplates'] as const),
+) {
   @ApiProperty({ required: false, type: () => SalaryTemplateDto })
   @IsOptional()
   @ValidateNested()

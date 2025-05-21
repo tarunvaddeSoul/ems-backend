@@ -6,102 +6,173 @@ import {
   Post,
   Put,
   Req,
+  Res,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { AuthGuard } from 'src/users/auth.guard';
 import { ChangePasswordDTO } from './dto/change-password.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { ResetPasswordDTO } from './dto/reset-password.dto';
-import { RolesGuard } from './role.guard';
-import { Roles } from './roles.decorator';
 import { Role } from '@prisma/client';
-import { Request } from 'express';
+import { Response } from 'express';
 import { Auth } from './auth.decorator';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 
 @Controller('users')
-// @UseInterceptors(TransformInterceptor)
+@UseInterceptors(TransformInterceptor)
 @ApiTags('Users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post('register')
-  async register(@Body() registerDto: RegisterDto) {
-    return this.usersService.register(registerDto);
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiBody({ type: RegisterDto })
+  @ApiResponse({ status: 201, description: 'User registered successfully.' })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  async register(
+    @Res() res: Response,
+    @Body() registerDto: RegisterDto,
+  ): Promise<Response> {
+    const response = await this.usersService.register(registerDto);
+    return res.status(response.statusCode).json(response);
   }
 
   @Post('login')
-  async login(@Body() loginDto: LoginDto) {
-    return this.usersService.login(loginDto);
+  @ApiOperation({ summary: 'Login user' })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({ status: 200, description: 'User logged in successfully.' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials.' })
+  async login(
+    @Res() res: Response,
+    @Body() loginDto: LoginDto,
+  ): Promise<Response> {
+    const response = await this.usersService.login(loginDto);
+    return res.status(response.statusCode).json(response);
   }
 
   @Post('refresh-token/:refreshToken')
-  async refreshToken(@Param('refreshToken') refreshToken: string) {
-    return this.usersService.refreshToken(refreshToken);
+  @ApiOperation({ summary: 'Refresh JWT token' })
+  @ApiParam({ name: 'refreshToken', type: String })
+  @ApiResponse({ status: 200, description: 'Token refreshed successfully.' })
+  @ApiResponse({ status: 401, description: 'Invalid refresh token.' })
+  async refreshToken(
+    @Res() res: Response,
+    @Param('refreshToken') refreshToken: string,
+  ): Promise<Response> {
+    const response = await this.usersService.refreshToken(refreshToken);
+    return res.status(response.statusCode).json(response);
   }
 
   @UseGuards(AuthGuard)
   @ApiBearerAuth('Bearer')
   @Put('change-password')
+  @ApiOperation({ summary: 'Change user password' })
+  @ApiBody({ type: ChangePasswordDTO })
+  @ApiResponse({ status: 200, description: 'Password changed successfully.' })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
   async changePassword(
+    @Res() res: Response,
     @Req() req,
     @Body() changePasswordDto: ChangePasswordDTO,
-  ) {
+  ): Promise<Response> {
     const userId = req.user['userId'];
     const { oldPassword, newPassword } = changePasswordDto;
-    return this.usersService.changePassword(
+    const response = await this.usersService.changePassword(
       oldPassword,
       newPassword,
       userId,
     );
+    return res.status(response.statusCode).json(response);
   }
 
   @Post('forgot-password')
-  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDTO) {
-    return this.usersService.forgotPassword(forgotPasswordDto.email);
+  @ApiOperation({ summary: 'Send forgot password email' })
+  @ApiBody({ type: ForgotPasswordDTO })
+  @ApiResponse({ status: 200, description: 'Forgot password email sent.' })
+  async forgotPassword(
+    @Res() res: Response,
+    @Body() forgotPasswordDto: ForgotPasswordDTO,
+  ): Promise<Response> {
+    const response = await this.usersService.forgotPassword(
+      forgotPasswordDto.email,
+    );
+    return res.status(response.statusCode).json(response);
   }
 
   @Put('reset-password')
-  async resetPassword(@Body() resetPasswordDto: ResetPasswordDTO) {
-    return this.usersService.resetPassword(resetPasswordDto);
+  @ApiOperation({ summary: 'Reset user password' })
+  @ApiBody({ type: ResetPasswordDTO })
+  @ApiResponse({ status: 200, description: 'Password reset successfully.' })
+  async resetPassword(
+    @Res() res: Response,
+    @Body() resetPasswordDto: ResetPasswordDTO,
+  ): Promise<Response> {
+    const response = await this.usersService.resetPassword(resetPasswordDto);
+    return res.status(response.statusCode).json(response);
   }
 
   @UseGuards(AuthGuard)
   @ApiBearerAuth('Bearer')
   @Get('profile')
-  async getUserProfile(@Req() req: any) {
+  @ApiOperation({ summary: 'Get user profile' })
+  @ApiResponse({ status: 200, description: 'User profile fetched.' })
+  async getUserProfile(
+    @Res() res: Response,
+    @Req() req: any,
+  ): Promise<Response> {
     const userId = req.user['userId'];
-    return this.usersService.getUserProfile(userId);
+    const response = await this.usersService.getUserProfile(userId);
+    return res.status(response.statusCode).json(response);
   }
 
   @UseGuards(AuthGuard)
   @ApiBearerAuth('Bearer')
   @Get('me')
-  async getCurrentUser(@Req() req: any) {
+  @ApiOperation({ summary: 'Get current user' })
+  @ApiResponse({ status: 200, description: 'Current user fetched.' })
+  async getCurrentUser(
+    @Res() res: Response,
+    @Req() req: any,
+  ): Promise<Response> {
     const userId = req.user['userId'];
-    return this.usersService.getCurrentUser(userId);
+    const response = await this.usersService.getCurrentUser(userId);
+    return res.status(response.statusCode).json(response);
   }
 
   @UseGuards(AuthGuard)
   @ApiBearerAuth('Bearer')
   @Post('logout')
+  @ApiOperation({ summary: 'Logout user' })
+  @ApiBody({ schema: { example: { refreshToken: 'string' } } })
+  @ApiResponse({ status: 200, description: 'Logout successful.' })
   async logoutUser(@Body() body: { refreshToken: string }) {
     await this.usersService.logoutUser(body.refreshToken);
     return { message: 'Logout successful' };
   }
 
   @Get('admin-only')
+  @ApiOperation({ summary: 'Admin only endpoint' })
+  @ApiResponse({ status: 200, description: 'This is only for admins.' })
   @Auth(Role.ADMIN)
   adminOnly() {
     return 'This is only for admins';
   }
 
   @Get('hr-operations')
+  @ApiOperation({ summary: 'HR and Operations only endpoint' })
+  @ApiResponse({ status: 200, description: 'This is for HR and Operations.' })
   @Auth(Role.HR, Role.OPERATIONS)
   hrAndOperations() {
     return 'This is for HR and Operations';

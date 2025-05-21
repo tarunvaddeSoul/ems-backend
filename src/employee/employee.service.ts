@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpStatus,
   Injectable,
   Logger,
   NotFoundException,
@@ -29,11 +30,11 @@ import { CompanyRepository } from 'src/company/company.repository';
 import { DesignationRepository } from 'src/designations/designation.repository';
 import { DepartmentRepository } from 'src/departments/department.repository';
 import { GetAllEmployeesDto } from './dto/get-all-employees.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
 import {
   CreateEmploymentHistoryDto,
   UpdateEmploymentHistoryDto,
 } from './dto/employment-history.dto';
+import { IResponse } from 'src/types/response.interface';
 
 @Injectable()
 export class EmployeeService {
@@ -54,7 +55,7 @@ export class EmployeeService {
     bankPassbook: Express.Multer.File | null,
     markSheet: Express.Multer.File | null,
     otherDocument: Express.Multer.File | null,
-  ): Promise<Employee | any> {
+  ): Promise<IResponse<Employee>> {
     try {
       // Calculate age from dateOfBirth
       const age = this.calculateAge(data.dateOfBirth);
@@ -178,7 +179,13 @@ export class EmployeeService {
       const employee = await this.employeeRepository.createEmployee(
         employeeData,
       );
+
+      if (!employee) {
+        throw new BadRequestException('Failed to create employee');
+      }
+
       return {
+        statusCode: HttpStatus.CREATED,
         message: 'Employee created successfully',
         data: employee,
       };
@@ -193,20 +200,24 @@ export class EmployeeService {
   async updateEmployee(
     id: string,
     updateEmployeeDto: UpdateEmployeeDto,
-  ): Promise<{ message: string; data: Employee }> {
+  ): Promise<IResponse<Employee>> {
     try {
+      const existingEmployee = await this.employeeRepository.getEmployeeById(
+        id,
+      );
+      if (!existingEmployee) {
+        throw new NotFoundException(`Employee with ID: ${id} not found.`);
+      }
       const updateResponse = await this.employeeRepository.updateEmployee(
         id,
         updateEmployeeDto,
       );
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee updated successfully',
         data: updateResponse,
       };
     } catch (error) {
-      if (error.code === 'P2025') {
-        throw new NotFoundException(`Employee with ID ${id} not found`);
-      }
       throw error;
     }
   }
@@ -214,7 +225,7 @@ export class EmployeeService {
   async updateEmployeeContactDetails(
     id: string,
     updateDto: UpdateEmployeeContactDetailsDto,
-  ) {
+  ): Promise<IResponse<EmployeeContactDetails>> {
     try {
       const updateResponse =
         await this.employeeRepository.updateEmployeeContactDetails(
@@ -222,6 +233,7 @@ export class EmployeeService {
           updateDto,
         );
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee updated successfully',
         data: updateResponse,
       };
@@ -233,11 +245,12 @@ export class EmployeeService {
   async updateEmployeeBankDetails(
     id: string,
     updateDto: UpdateEmployeeBankDetailsDto,
-  ) {
+  ): Promise<IResponse<EmployeeBankDetails>> {
     try {
       const updateResponse =
         await this.employeeRepository.updateEmployeeBankDetails(id, updateDto);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee updated successfully',
         data: updateResponse,
       };
@@ -249,7 +262,7 @@ export class EmployeeService {
   async updateEmployeeAdditionalDetails(
     id: string,
     updateDto: UpdateEmployeeAdditionalDetailsDto,
-  ) {
+  ): Promise<IResponse<EmployeeAdditionalDetails>> {
     try {
       const updateResponse =
         await this.employeeRepository.updateEmployeeAdditionalDetails(
@@ -257,6 +270,7 @@ export class EmployeeService {
           updateDto,
         );
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee updated successfully',
         data: updateResponse,
       };
@@ -268,7 +282,7 @@ export class EmployeeService {
   async updateEmployeeReferenceDetails(
     id: string,
     updateDto: UpdateEmployeeReferenceDetailsDto,
-  ) {
+  ): Promise<IResponse<EmployeeReferenceDetails>> {
     try {
       const updateResponse =
         await this.employeeRepository.updateEmployeeReferenceDetails(
@@ -276,6 +290,7 @@ export class EmployeeService {
           updateDto,
         );
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee updated successfully',
         data: updateResponse,
       };
@@ -287,7 +302,7 @@ export class EmployeeService {
   async updateEmployeeDocumentUploads(
     id: string,
     updateDto: UpdateEmployeeDocumentUploadsDto,
-  ): Promise<{ message: string; data: EmployeeDocumentUploads }> {
+  ): Promise<IResponse<EmployeeDocumentUploads>> {
     const currentDocuments =
       await this.employeeRepository.getEmployeeDocumentUploads(id);
 
@@ -337,6 +352,7 @@ export class EmployeeService {
       );
 
     return {
+      statusCode: HttpStatus.OK,
       message: 'Employee data updated successfully!',
       data: updateResponse,
     };
@@ -344,7 +360,7 @@ export class EmployeeService {
 
   async createEmploymentHistory(
     createDto: CreateEmploymentHistoryDto,
-  ): Promise<{ message: string; data: EmploymentHistory }> {
+  ): Promise<IResponse<EmploymentHistory>> {
     const {
       employeeId,
       companyId,
@@ -404,6 +420,7 @@ export class EmployeeService {
       saveEmploymentHistoryPayload,
     );
     return {
+      statusCode: HttpStatus.CREATED,
       message: 'Employment record created successfully!',
       data: saveResponse,
     };
@@ -412,21 +429,24 @@ export class EmployeeService {
   async updateEmploymentHistory(
     id: string,
     updateDto: UpdateEmploymentHistoryDto,
-  ): Promise<{ message: string; data: EmploymentHistory }> {
+  ): Promise<IResponse<EmploymentHistory>> {
     try {
+      const existingEmploymentHistory =
+        await this.employeeRepository.getCurrentEmploymentHistory(id);
+      if (!existingEmploymentHistory) {
+        throw new NotFoundException(
+          `Employment history with ID: ${id} not found.`,
+        );
+      }
       const updateResponse =
         await this.employeeRepository.updateEmploymentHistory(id, updateDto);
 
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employment history updated successfully!',
         data: updateResponse,
       };
     } catch (error) {
-      if (error.code === 'P2025') {
-        throw new NotFoundException(
-          `Employment history record with ID ${id} not found`,
-        );
-      }
       throw error;
     }
   }
@@ -434,7 +454,7 @@ export class EmployeeService {
   async closeCurrentEmployment(
     employeeId: string,
     leavingDate: string,
-  ): Promise<{ message: string; data: EmploymentHistory }> {
+  ): Promise<IResponse<EmploymentHistory>> {
     const currentEmployment =
       await this.employeeRepository.getCurrentEmploymentHistory(employeeId);
 
@@ -448,6 +468,7 @@ export class EmployeeService {
       { leavingDate, status: 'INACTIVE' },
     );
     return {
+      statusCode: HttpStatus.OK,
       message: `Employee's current employment closed`,
       data: closeResponse,
     };
@@ -455,7 +476,7 @@ export class EmployeeService {
 
   async getEmploymentHistory(
     employeeId: string,
-  ): Promise<{ message: string; data: EmploymentHistory[] }> {
+  ): Promise<IResponse<EmploymentHistory[]>> {
     try {
       const existingEmployee = await this.employeeRepository.getEmployeeById(
         employeeId,
@@ -466,6 +487,7 @@ export class EmployeeService {
       const employmentHistory =
         await this.employeeRepository.getEmploymentHistory(employeeId);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employment history fetched successfully',
         data: employmentHistory,
       };
@@ -479,7 +501,7 @@ export class EmployeeService {
 
   async getEmployeeContactDetails(
     employeeId: string,
-  ): Promise<{ message: string; data: EmployeeContactDetails }> {
+  ): Promise<IResponse<EmployeeContactDetails>> {
     try {
       const existingEmployee = await this.employeeRepository.getEmployeeById(
         employeeId,
@@ -490,6 +512,7 @@ export class EmployeeService {
       const contactDetails =
         await this.employeeRepository.getEmployeeContactDetails(employeeId);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee contact details fetched successfully',
         data: contactDetails,
       };
@@ -503,7 +526,7 @@ export class EmployeeService {
 
   async getEmployeeBankDetails(
     employeeId: string,
-  ): Promise<{ message: string; data: EmployeeBankDetails }> {
+  ): Promise<IResponse<EmployeeBankDetails>> {
     try {
       const existingEmployee = await this.employeeRepository.getEmployeeById(
         employeeId,
@@ -515,6 +538,7 @@ export class EmployeeService {
         employeeId,
       );
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee bank details fetched successfully',
         data: bankDetails,
       };
@@ -528,7 +552,7 @@ export class EmployeeService {
 
   async getEmployeeAdditionalDetails(
     employeeId: string,
-  ): Promise<{ message: string; data: EmployeeAdditionalDetails }> {
+  ): Promise<IResponse<EmployeeAdditionalDetails>> {
     try {
       const existingEmployee = await this.employeeRepository.getEmployeeById(
         employeeId,
@@ -539,6 +563,7 @@ export class EmployeeService {
       const additionalDetails =
         await this.employeeRepository.getEmployeeAdditionalDetails(employeeId);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee additional details fetched successfully',
         data: additionalDetails,
       };
@@ -552,7 +577,7 @@ export class EmployeeService {
 
   async getEmployeeReferenceDetails(
     employeeId: string,
-  ): Promise<{ message: string; data: EmployeeReferenceDetails }> {
+  ): Promise<IResponse<EmployeeReferenceDetails>> {
     try {
       const existingEmployee = await this.employeeRepository.getEmployeeById(
         employeeId,
@@ -563,6 +588,7 @@ export class EmployeeService {
       const referenceDetails =
         await this.employeeRepository.getEmployeeReferenceDetails(employeeId);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee reference details fetched successfully',
         data: referenceDetails,
       };
@@ -576,7 +602,7 @@ export class EmployeeService {
 
   async getEmployeeDocumentUploads(
     employeeId: string,
-  ): Promise<{ message: string; data: EmployeeDocumentUploads }> {
+  ): Promise<IResponse<EmployeeDocumentUploads>> {
     try {
       const existingEmployee = await this.employeeRepository.getEmployeeById(
         employeeId,
@@ -587,6 +613,7 @@ export class EmployeeService {
       const documentUploads =
         await this.employeeRepository.getEmployeeDocumentUploads(employeeId);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee document uploads fetched successfully',
         data: documentUploads,
       };
@@ -601,16 +628,26 @@ export class EmployeeService {
   async updateCurrentEmploymentHistory(
     id: string,
     data: Partial<EmploymentHistory>,
-  ) {
+  ): Promise<IResponse<EmploymentHistory>> {
+    const existingEmploymentHistory =
+      await this.employeeRepository.getCurrentEmploymentHistory(id);
+    if (!existingEmploymentHistory) {
+      throw new NotFoundException(
+        `Employment history with ID: ${id} not found.`,
+      );
+    }
     const response =
       await this.employeeRepository.updateCurrentEmploymentHistory(id, data);
     return {
+      statusCode: HttpStatus.OK,
       message: 'The employment history has been successfully updated.',
       data: response,
     };
   }
 
-  async getActiveEmployment(employeeId: string) {
+  async getActiveEmployment(
+    employeeId: string,
+  ): Promise<IResponse<EmploymentHistory>> {
     const response = await this.employeeRepository.findActiveByEmployeeId(
       employeeId,
     );
@@ -618,6 +655,7 @@ export class EmployeeService {
       throw new NotFoundException(`No active employment found`);
     }
     return {
+      statusCode: HttpStatus.OK,
       message: 'The active employment has been successfully retrieved.',
       data: response,
     };
@@ -631,9 +669,7 @@ export class EmployeeService {
     return urlParts.slice(3).join('/');
   }
 
-  async getEmployeeById(
-    id: string,
-  ): Promise<{ message: string; data: Employee }> {
+  async getEmployeeById(id: string): Promise<IResponse<Employee>> {
     try {
       const employeeResponse = await this.employeeRepository.getEmployeeById(
         id,
@@ -642,6 +678,7 @@ export class EmployeeService {
         throw new NotFoundException(`Employee with ID: ${id} not found.`);
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee retrieved successfully',
         data: employeeResponse,
       };
@@ -653,9 +690,7 @@ export class EmployeeService {
     }
   }
 
-  async deleteEmployeeById(
-    id: string,
-  ): Promise<{ message: string; data: any }> {
+  async deleteEmployeeById(id: string): Promise<IResponse<Employee>> {
     try {
       const employeeResponse = await this.employeeRepository.getEmployeeById(
         id,
@@ -671,6 +706,7 @@ export class EmployeeService {
       const deleteEmployeeResponse =
         await this.employeeRepository.deleteEmployeeById(id);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee deleted successfully',
         data: deleteEmployeeResponse,
       };
@@ -682,7 +718,7 @@ export class EmployeeService {
     }
   }
 
-  async deleteMultipleEmployees(ids: string[]): Promise<{ message: string }> {
+  async deleteMultipleEmployees(ids: string[]): Promise<IResponse<null>> {
     try {
       for (const id of ids) {
         const employee = await this.employeeRepository.getEmployeeById(id);
@@ -694,7 +730,10 @@ export class EmployeeService {
 
         await this.employeeRepository.deleteEmployeeById(id);
       }
-      return { message: 'Employees deleted successfully' };
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Employees deleted successfully',
+      };
     } catch (error) {
       this.logger.error(`Error deleting employees: ${error.message}`);
       throw error;
@@ -733,12 +772,18 @@ export class EmployeeService {
 
   async getAllEmployees(
     queryParams: GetAllEmployeesDto,
-  ): Promise<Employee[] | any> {
+  ): Promise<IResponse<{ data: Employee[]; total: number }>> {
     try {
       const employees = await this.employeeRepository.getAllEmployees(
         queryParams,
       );
+
+      if (employees.total === 0) {
+        throw new NotFoundException('No employees found');
+      }
+
       return {
+        statusCode: HttpStatus.OK,
         message: 'Employee fetched successfully',
         data: employees,
       };
@@ -753,7 +798,7 @@ export class EmployeeService {
   private async uploadFile(
     file: Express.Multer.File,
     folderPath: string,
-  ): Promise<string | null> {
+  ): Promise<string> {
     if (file) {
       return await this.awsS3Service.uploadFile(file, folderPath);
     }

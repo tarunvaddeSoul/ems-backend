@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Delete, Param, Body, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  Param,
+  Body,
+  UseInterceptors,
+} from '@nestjs/common';
 import { DesignationService } from './designation.service';
 import { ApiTags } from '@nestjs/swagger';
 import { TransformInterceptor } from 'src/common/transform-interceptor';

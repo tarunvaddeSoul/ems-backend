@@ -12,19 +12,28 @@ export class DashboardRepository {
   async getNewEmployeesThisMonth(): Promise<number> {
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const lastDayOfMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      0,
+    );
 
-    const formattedFirstDay = this.formatDateToComparableString(firstDayOfMonth);
+    const formattedFirstDay =
+      this.formatDateToComparableString(firstDayOfMonth);
     const formattedLastDay = this.formatDateToComparableString(lastDayOfMonth);
 
     const employeesInDateRange = await this.prisma.employee.findMany();
     if (employeesInDateRange.length == 0) {
       return 0;
     }
-    
-    const filteredEmployees = employeesInDateRange.filter(employee => {
-      const employeeDate = this.formatDateToComparableString(this.parseDate(employee.employeeOnboardingDate));
-      return employeeDate >= formattedFirstDay && employeeDate <= formattedLastDay;
+
+    const filteredEmployees = employeesInDateRange.filter((employee) => {
+      const employeeDate = this.formatDateToComparableString(
+        this.parseDate(employee.employeeOnboardingDate),
+      );
+      return (
+        employeeDate >= formattedFirstDay && employeeDate <= formattedLastDay
+      );
     });
 
     return filteredEmployees.length;
@@ -38,7 +47,9 @@ export class DashboardRepository {
   }
 
   private parseDate(dateString: string): Date {
-    const [day, month, year] = dateString.split('-').map(part => parseInt(part, 10));
+    const [day, month, year] = dateString
+      .split('-')
+      .map((part) => parseInt(part, 10));
     return new Date(year, month - 1, day);
   }
 
@@ -49,7 +60,11 @@ export class DashboardRepository {
   async getNewCompaniesThisMonth(): Promise<number> {
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const lastDayOfMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      0,
+    );
 
     return this.prisma.company.count({
       where: {

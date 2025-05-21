@@ -1,4 +1,11 @@
-import { Controller, Post, Body, Get, Param, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  UseInterceptors,
+} from '@nestjs/common';
 import { SalaryService } from './salary.service';
 import { CalculateSalaryDto } from './dto/calculate-salary.dto';
 import { ApiTags } from '@nestjs/swagger';
@@ -18,7 +25,7 @@ export class SalaryController {
   @Get('company/:companyId/month/:month')
   async getSalariesByCompanyAndMonth(
     @Param('companyId') companyId: string,
-    @Param('month') month: string
+    @Param('month') month: string,
   ) {
     return this.salaryService.getSalariesByCompanyAndMonth(companyId, month);
   }

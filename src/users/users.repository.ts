@@ -22,7 +22,7 @@ export class UsersRepository {
           email,
           password,
           role,
-          departmentId
+          departmentId,
         },
       });
       return newUser;
