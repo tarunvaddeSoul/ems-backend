@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { DashboardRepository } from './dashboard.repository';
 
 @Injectable()
@@ -35,5 +35,36 @@ export class DashboardService {
     //   throw new NotFoundException('No companies found');
     // }
     return await this.dashboardRepository.getNewCompaniesThisMonth();
+  }
+
+  async getUpcomingBirthdays(daysAhead = 30) {
+    return await this.dashboardRepository.getUpcomingBirthdays(daysAhead);
+  }
+
+  async getUpcomingAnniversaries(daysAhead = 30) {
+    return await this.dashboardRepository.getUpcomingAnniversaries(daysAhead);
+  }
+
+  async getEmployeesByDepartment() {
+    return await this.dashboardRepository.getEmployeesByDepartment();
+  }
+
+  async getEmployeesByDesignation() {
+    return await this.dashboardRepository.getEmployeesByDesignation();
+  }
+
+  async getActiveInactiveCountsInEmployees() {
+    return await this.dashboardRepository.getActiveInactiveCountsInEmployees();
+  }
+  async getActiveInactiveCountsInCompanies() {
+    return await this.dashboardRepository.getActiveInactiveCountsInCompanies();
+  }
+
+  async getRecentJoinees(limit = 5) {
+    return await this.dashboardRepository.getRecentJoinees(limit);
+  }
+
+  async getRecentPayrolls(limit = 5) {
+    return await this.dashboardRepository.getRecentPayrolls(limit);
   }
 }

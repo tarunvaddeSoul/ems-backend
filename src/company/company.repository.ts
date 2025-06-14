@@ -2,12 +2,25 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Company, EmploymentHistory, Prisma } from '@prisma/client';
 import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
-import { CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
+import { UpdateCompanyDto } from './dto/company.dto';
 import { GetEmployeesResponseDto } from './dto/get-employees-response.dto';
+import { CreateCompanyDto } from './dto/create-company.dto';
 
 @Injectable()
 export class CompanyRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  async findByName(name: string): Promise<Company | null> {
+    return this.prisma.company.findFirst({
+      where: { name: name.trim().toUpperCase() },
+    });
+  }
+
+  async findByContactNumber(contactNumber: string): Promise<Company | null> {
+    return this.prisma.company.findFirst({
+      where: { contactPersonNumber: contactNumber },
+    });
+  }
 
   async create(data: CreateCompanyDto): Promise<Company> {
     const {
@@ -15,91 +28,143 @@ export class CompanyRepository {
       address,
       contactPersonName,
       contactPersonNumber,
-      salaryTemplates,
       status,
       companyOnboardingDate,
+      salaryTemplates,
     } = data;
 
-    const company = await this.prisma.company.create({
-      data: {
-        name,
-        address,
-        contactPersonName,
-        contactPersonNumber,
-        status,
-        companyOnboardingDate,
-        salaryTemplates: {
-          create: {
-            fields: salaryTemplates as any,
-          },
+    return await this.prisma.$transaction(async (prisma) => {
+      // Create the company
+      const company = await prisma.company.create({
+        data: {
+          name,
+          address,
+          contactPersonName,
+          contactPersonNumber,
+          status,
+          companyOnboardingDate,
         },
-      },
+      });
+
+      // Create the salary template with structured configuration
+      await prisma.salaryTemplate.create({
+        data: {
+          companyId: company.id,
+          mandatoryFields: this.sanitizeJsonData(
+            salaryTemplates.mandatoryFields,
+          ),
+          optionalFields: this.sanitizeJsonData(salaryTemplates.optionalFields),
+          customFields: this.sanitizeJsonData(
+            salaryTemplates.customFields || [],
+          ),
+        },
+      });
+
+      // Return the company with its salary template
+      return prisma.company.findUnique({
+        where: { id: company.id },
+        include: {
+          salaryTemplates: true,
+        },
+      });
+    });
+  }
+
+  private sanitizeJsonData(data: any): any {
+    // Convert any special types to plain objects for JSON storage
+    return JSON.parse(JSON.stringify(data));
+  }
+
+  // async update(id: string, data: UpdateCompanyDto): Promise<Company> {
+  //   const { salaryTemplates, ...companyData } = data;
+
+  //   const updatedCompany = await this.prisma.company.update({
+  //     where: { id },
+  //     data: {
+  //       ...companyData,
+  //       salaryTemplates: salaryTemplates
+  //         ? {
+  //             updateMany: {
+  //               where: {
+  //                 companyId: id,
+  //               },
+  //               data: {
+  //                 fields: salaryTemplates as any,
+  //               },
+  //             },
+  //           }
+  //         : undefined,
+  //     },
+  //     include: {
+  //       salaryTemplates: true,
+  //     },
+  //   });
+
+  //   // If no salary template exists, create one
+  //   if (salaryTemplates && updatedCompany.salaryTemplates.length === 0) {
+  //     await this.prisma.salaryTemplate.create({
+  //       data: {
+  //         companyId: id,
+  //         fields: salaryTemplates as any,
+  //       },
+  //     });
+
+  //     // Fetch the company again to include the newly created salary template
+  //     return await this.prisma.company.findUnique({
+  //       where: { id },
+  //       include: { salaryTemplates: true },
+  //     });
+  //   }
+
+  //   return updatedCompany;
+  // }
+
+  async findById(id: string) {
+    return this.prisma.company.findUnique({
+      where: { id },
       include: {
         salaryTemplates: true,
       },
     });
+  }
 
-    return company;
+  async getSalaryTemplate(companyId: string) {
+    return this.prisma.salaryTemplate.findFirst({
+      where: { companyId },
+    });
   }
 
   async update(id: string, data: UpdateCompanyDto): Promise<Company> {
+    // Destructure salaryTemplateConfig if present
     const { salaryTemplates, ...companyData } = data;
 
-    const updatedCompany = await this.prisma.company.update({
+    // Update the company basic info
+    await this.prisma.company.update({
       where: { id },
-      data: {
-        ...companyData,
-        salaryTemplates: salaryTemplates
-          ? {
-              updateMany: {
-                where: {
-                  companyId: id,
-                },
-                data: {
-                  fields: salaryTemplates as any,
-                },
-              },
-            }
-          : undefined,
-      },
-      include: {
-        salaryTemplates: true,
-      },
+      data: companyData,
     });
 
-    // If no salary template exists, create one
-    if (salaryTemplates && updatedCompany.salaryTemplates.length === 0) {
-      await this.prisma.salaryTemplate.create({
+    // If salaryTemplateConfig is provided, update the related salaryTemplate
+    if (salaryTemplates) {
+      await this.prisma.salaryTemplate.updateMany({
+        where: { companyId: id },
         data: {
-          companyId: id,
-          fields: salaryTemplates as any,
+          mandatoryFields: this.sanitizeJsonData(
+            salaryTemplates.mandatoryFields,
+          ),
+          optionalFields: this.sanitizeJsonData(salaryTemplates.optionalFields),
+          customFields: this.sanitizeJsonData(
+            salaryTemplates.customFields || [],
+          ),
         },
-      });
-
-      // Fetch the company again to include the newly created salary template
-      return await this.prisma.company.findUnique({
-        where: { id },
-        include: { salaryTemplates: true },
       });
     }
 
-    return updatedCompany;
-  }
-
-  async findById(id: string) {
-    const company = await this.prisma.company.findUnique({
+    // Return the updated company with salaryTemplates
+    return this.prisma.company.findUnique({
       where: { id },
-      select: {
-        name: true,
-        address: true,
-        contactPersonName: true,
-        contactPersonNumber: true,
-        status: true,
-        companyOnboardingDate: true,
-        salaryTemplates: { select: { fields: true } },
-      },
+      include: { salaryTemplates: true },
     });
-    return company;
   }
 
   async companyExists(name: string): Promise<boolean> {

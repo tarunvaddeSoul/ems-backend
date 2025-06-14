@@ -20,6 +20,8 @@ import { DepartmentRepository } from 'src/departments/department.repository';
 import { Role, User } from '@prisma/client';
 import { IResponse } from 'src/types/response.interface';
 import { ITokens, IUser } from './interfaces/user.interface';
+import { ConfigService } from '@nestjs/config';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -29,6 +31,7 @@ export class UsersService {
     private readonly departmentRepository: DepartmentRepository,
     private jwtService: JwtService,
     private mailService: MailService,
+    private readonly configService: ConfigService,
   ) {}
 
   async login(loginDto: LoginDto): Promise<IResponse<IUser>> {
@@ -105,13 +108,58 @@ export class UsersService {
     }
   }
 
+  async updateUser(
+    userId: string,
+    updateUserDto: UpdateUserDto,
+  ): Promise<IResponse<Omit<User, 'password'>>> {
+    try {
+      const user = await this.usersRepository.findUserById(userId);
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+      if (updateUserDto.departmentId) {
+        const department =
+          await this.departmentRepository.getUserDepartmentById(
+            updateUserDto.departmentId,
+          );
+        if (!department) {
+          throw new NotFoundException(
+            `Department with ID: ${updateUserDto.departmentId} not found.`,
+          );
+        }
+      }
+
+      const updatedUser = await this.usersRepository.updateUser(
+        userId,
+        updateUserDto,
+      );
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'User updated successfully',
+        data: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          mobileNumber: updatedUser.mobileNumber,
+          role: updatedUser.role,
+          departmentId: updatedUser.departmentId,
+          createdAt: updatedUser.createdAt,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to update user: ${error.message}`);
+      throw error;
+    }
+  }
+
   private async generateUserTokens(
     userId: string,
     role: Role,
   ): Promise<ITokens> {
+    const jwtExpiry = this.configService.get<string>('JWT_EXPIRY') || '6h';
     const accessToken = await this.jwtService.sign(
       { userId, role },
-      { expiresIn: '6h' },
+      { expiresIn: jwtExpiry },
     );
     const refreshToken = uuidv4();
     await this.storeRefreshToken(refreshToken, userId);

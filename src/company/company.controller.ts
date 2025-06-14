@@ -18,7 +18,8 @@ import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { DeleteCompaniesDto } from './dto/delete-companies.dto';
 import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
-import { CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
+import { UpdateCompanyDto } from './dto/company.dto';
+import { CreateCompanyDto } from './dto/create-company.dto';
 import { GetEmployeesResponseDto } from './dto/get-employees-response.dto';
 import { Response } from 'express';
 
@@ -30,28 +31,37 @@ export class CompanyController {
 
   @HttpCode(HttpStatus.CREATED)
   @Post()
-  @ApiOperation({ summary: 'Create a new company' })
+  // @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Create a new company',
+    description: 'Creates a new company with salary template configuration',
+  })
   @ApiResponse({
-    status: 201,
+    status: HttpStatus.CREATED,
     description: 'The company has been successfully created.',
   })
-  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Bad Request: Invalid data provided.',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Conflict: Company with the same name already exists.',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized: User is not authenticated.',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Forbidden: User does not have permission.',
+  })
   async createCompany(
     @Res() res: Response,
-    @Body() data: CreateCompanyDto,
+    @Body() createCompanyDto: CreateCompanyDto,
   ): Promise<Response> {
-    const response = await this.companyService.createCompany(data);
-    return res.status(response.statusCode).json(response);
-  }
-
-  @Get('employee-count')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Get employees count',
-    description: 'Get employees count by company',
-  })
-  async getCompanyWithEmployeeCount(@Res() res: Response): Promise<Response> {
-    const response = await this.companyService.getCompanyWithEmployeeCount();
+    // this.logger.log(`Request to create company: ${createCompanyDto.name}`);
+    const response = await this.companyService.createCompany(createCompanyDto);
     return res.status(response.statusCode).json(response);
   }
 
@@ -69,6 +79,17 @@ export class CompanyController {
     @Body() data: UpdateCompanyDto,
   ): Promise<Response> {
     const response = await this.companyService.updateCompany(id, data);
+    return res.status(response.statusCode).json(response);
+  }
+
+  @Get('employee-count')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get employees count',
+    description: 'Get employees count by company',
+  })
+  async getCompanyWithEmployeeCount(@Res() res: Response): Promise<Response> {
+    const response = await this.companyService.getCompanyWithEmployeeCount();
     return res.status(response.statusCode).json(response);
   }
 

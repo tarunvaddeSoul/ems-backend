@@ -75,4 +75,120 @@ export class DashboardRepository {
       },
     });
   }
+
+  async getUpcomingBirthdays(daysAhead = 30): Promise<any[]> {
+    const today = new Date();
+    const end = new Date();
+    end.setDate(today.getDate() + daysAhead);
+
+    // Fetch all employees
+    const employees = await this.prisma.employee.findMany();
+
+    // Filter for birthdays in the next `daysAhead` days
+    return employees.filter((emp) => {
+      if (!emp.dateOfBirth) return false;
+      // Assuming dateOfBirth is stored as 'YYYY-MM-DD' or 'DD-MM-YYYY'
+      let [year, month, day] = [0, 0, 0];
+      if (emp.dateOfBirth.includes('-')) {
+        const parts = emp.dateOfBirth.split('-');
+        if (parts[0].length === 4) {
+          // YYYY-MM-DD
+          year = parseInt(parts[0]);
+          month = parseInt(parts[1]);
+          day = parseInt(parts[2]);
+        } else {
+          // DD-MM-YYYY
+          day = parseInt(parts[0]);
+          month = parseInt(parts[1]);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          year = parseInt(parts[2]);
+        }
+      }
+      const birthdayThisYear = new Date(today.getFullYear(), month - 1, day);
+      return birthdayThisYear >= today && birthdayThisYear <= end;
+    });
+  }
+
+  async getUpcomingAnniversaries(daysAhead = 30): Promise<any[]> {
+    const today = new Date();
+    const end = new Date();
+    end.setDate(today.getDate() + daysAhead);
+
+    // Fetch all employees
+    const employees = await this.prisma.employee.findMany();
+
+    // Filter for anniversaries in the next `daysAhead` days
+    return employees.filter((emp) => {
+      if (!emp.employeeOnboardingDate) return false;
+      // Assuming employeeOnboardingDate is stored as 'YYYY-MM-DD' or 'DD-MM-YYYY'
+      let [year, month, day] = [0, 0, 0];
+      if (emp.employeeOnboardingDate.includes('-')) {
+        const parts = emp.employeeOnboardingDate.split('-');
+        if (parts[0].length === 4) {
+          // YYYY-MM-DD
+          year = parseInt(parts[0]);
+          month = parseInt(parts[1]);
+          day = parseInt(parts[2]);
+        } else {
+          // DD-MM-YYYY
+          day = parseInt(parts[0]);
+          month = parseInt(parts[1]);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          year = parseInt(parts[2]);
+        }
+      }
+      const anniversaryThisYear = new Date(today.getFullYear(), month - 1, day);
+      return anniversaryThisYear >= today && anniversaryThisYear <= end;
+    });
+  }
+
+  // Employees by department
+  async getEmployeesByDepartment() {
+    return this.prisma.employmentHistory.groupBy({
+      by: ['departmentName'],
+      _count: { departmentName: true },
+    });
+  }
+
+  // Employees by designation
+  async getEmployeesByDesignation() {
+    return this.prisma.employmentHistory.groupBy({
+      by: ['designationName'],
+      _count: { designationName: true },
+    });
+  }
+
+  // Active vs inactive employees
+  async getActiveInactiveCountsInEmployees() {
+    const [active, inactive] = await Promise.all([
+      this.prisma.employee.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.employee.count({ where: { status: 'INACTIVE' } }),
+    ]);
+    return { active, inactive };
+  }
+
+  async getActiveInactiveCountsInCompanies() {
+    const [active, inactive] = await Promise.all([
+      this.prisma.company.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.company.count({ where: { status: 'INACTIVE' } }),
+    ]);
+    return { active, inactive };
+  }
+
+  // Recent joinees (by onboarding date)
+  async getRecentJoinees(limit = 5) {
+    return this.prisma.employee.findMany({
+      orderBy: { employeeOnboardingDate: 'desc' },
+      take: limit,
+    });
+  }
+
+  // Recent payrolls (by createdAt)
+  async getRecentPayrolls(limit = 5) {
+    return this.prisma.salaryRecord.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: { employee: true, company: true },
+    });
+  }
 }

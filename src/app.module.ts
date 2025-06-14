@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { UsersModule } from './users/users.module';
 import { CompanyModule } from './company/company.module';
 import { EmployeeModule } from './employee/employee.module';
-import { SalaryModule } from './salary/salary.module';
+import { PayrollModule } from './salary/payroll.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { DepartmentModule } from './departments/department.module';
@@ -14,7 +14,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     UsersModule,
     CompanyModule,
     EmployeeModule,
-    SalaryModule,
+    PayrollModule,
     PrismaModule,
     AttendanceModule,
     DepartmentModule,

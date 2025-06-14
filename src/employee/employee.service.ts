@@ -179,7 +179,6 @@ export class EmployeeService {
       const employee = await this.employeeRepository.createEmployee(
         employeeData,
       );
-
       if (!employee) {
         throw new BadRequestException('Failed to create employee');
       }
@@ -778,9 +777,9 @@ export class EmployeeService {
         queryParams,
       );
 
-      if (employees.total === 0) {
-        throw new NotFoundException('No employees found');
-      }
+      // if (employees.total === 0) {
+      //   throw new NotFoundException('No employees found');
+      // }
 
       return {
         statusCode: HttpStatus.OK,

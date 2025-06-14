@@ -191,18 +191,22 @@ export class AttendanceRepository {
           },
         },
       });
-      const { attendanceSheetUrl } =
-        await this.prisma.attendanceSheet.findUnique({
-          where: {
-            companyId_month: {
-              companyId,
-              month,
-            },
-          },
-        });
-      if (!attendanceSheetUrl) {
-        throw new NotFoundException(`No attendance sheet found`);
+
+      if (attendanceRecords.length === 0) {
+        throw new NotFoundException(
+          `No attendance records found for company ${companyId} and month ${month}`,
+        );
       }
+
+      const attendanceSheet = await this.prisma.attendanceSheet.findUnique({
+        where: {
+          companyId_month: {
+            companyId,
+            month,
+          },
+        },
+      });
+
       return attendanceRecords.map((record) => ({
         employeeID: record.employee.id,
         employeeName: `${record.employee.firstName} ${record.employee.lastName}`,
@@ -214,7 +218,7 @@ export class AttendanceRepository {
           record.employee.employmentHistories[0]?.department.name ||
           'Unknown Department',
         presentCount: record.presentCount,
-        attendanceSheetUrl,
+        attendanceSheetUrl: attendanceSheet?.attendanceSheetUrl ?? null,
       }));
     } catch (error) {
       throw error;

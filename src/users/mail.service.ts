@@ -1,16 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
   private transport: nodemailer.Transporter;
 
-  constructor() {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: Logger,
+  ) {
     this.transport = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.MAIL_ID,
-        pass: process.env.MAIL_PASSWORD,
+        user: this.configService.get<string>('MAIL_ID'),
+        pass: this.configService.get<string>('MAIL_PASSWORD'),
       },
     });
   }
@@ -18,7 +22,7 @@ export class MailService {
   async sendForgotPasswordEmail(email: string, resetToken: string) {
     try {
       const mailOptions = {
-        from: process.env.MAIL_ID,
+        from: this.configService.get<string>('MAIL_ID'),
         to: email,
         subject: 'Password Reset Request',
         text:
@@ -30,9 +34,9 @@ export class MailService {
       };
 
       await this.transport.sendMail(mailOptions);
-      console.log(`Forgot password email sent to ${email}`);
+      this.logger.log(`Forgot password email sent to ${email}`);
     } catch (error) {
-      console.error('Error sending forgot password email:', error);
+      this.logger.error('Error sending forgot password email:', error);
       throw error;
     }
   }

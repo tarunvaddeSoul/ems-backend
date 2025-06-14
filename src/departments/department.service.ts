@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -21,6 +22,7 @@ export class DepartmentService {
       const addUserDepartmentResponse =
         await this.departmentRepository.addUserDepartment(name);
       return {
+        statusCode: HttpStatus.CREATED,
         message: 'User department added successfully!',
         data: addUserDepartmentResponse,
       };
@@ -37,6 +39,7 @@ export class DepartmentService {
         throw new NotFoundException(`No user departments found.`);
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Departments fetched successfully!',
         data: departments,
       };
@@ -57,6 +60,7 @@ export class DepartmentService {
       const deleteResponse =
         await this.departmentRepository.deleteUserDepartmentByName(name);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Department deleted successfully.',
         data: deleteResponse,
       };
@@ -77,6 +81,7 @@ export class DepartmentService {
       const addEmployeeDepartmentResponse =
         await this.departmentRepository.addEmployeeDepartment(name);
       return {
+        statusCode: HttpStatus.CREATED,
         message: 'Employee department added successfully!',
         data: addEmployeeDepartmentResponse,
       };
@@ -93,6 +98,7 @@ export class DepartmentService {
         throw new NotFoundException(`No employee departments found.`);
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Departments fetched successfully!',
         data: departments,
       };
@@ -113,6 +119,7 @@ export class DepartmentService {
       const deleteResponse =
         await this.departmentRepository.deleteEmployeeDepartmentByName(name);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Department deleted successfully.',
         data: deleteResponse,
       };

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpStatus,
   Injectable,
   Logger,
   NotFoundException,
@@ -12,6 +13,7 @@ import { Attendance } from '@prisma/client';
 import { CompanyRepository } from 'src/company/company.repository';
 import { UploadAttendanceSheetDto } from './dto/upload-attendance-sheet.dto';
 import { AwsS3Service } from 'src/aws/aws-s3.service';
+import { IResponse } from 'src/types/response.interface';
 
 @Injectable()
 export class AttendanceService {
@@ -23,7 +25,9 @@ export class AttendanceService {
     private readonly awsS3Service: AwsS3Service,
   ) {}
 
-  async markAttendance(markAttendanceDto: MarkAttendanceDto) {
+  async markAttendance(
+    markAttendanceDto: MarkAttendanceDto,
+  ): Promise<IResponse<any>> {
     try {
       const employee = await this.employeeRepository.getEmployeeById(
         markAttendanceDto.employeeId,
@@ -41,8 +45,6 @@ export class AttendanceService {
           `Company with ID ${markAttendanceDto.companyId} not found.`,
         );
       }
-      // const folder = `attendance-sheets/${company.name}`;
-      // const attendanceSheetUrl = await this.uploadFile(attendanceSheet, `${folder}/${markAttendanceDto.month}`);
       const markAttendanceResponse =
         await this.attendanceRepository.markAttendance(markAttendanceDto);
       if (!markAttendanceResponse) {
@@ -51,6 +53,7 @@ export class AttendanceService {
         );
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Marked attendance successfully',
         data: markAttendanceResponse,
       };
@@ -64,18 +67,13 @@ export class AttendanceService {
 
   async bulkMarkAttendance(
     bulkMarkAttendanceDto: BulkMarkAttendanceDto,
-  ): Promise<{ message: string; data: Attendance[] }> {
+  ): Promise<IResponse<Attendance[]>> {
     try {
       const { records } = bulkMarkAttendanceDto;
       const attendanceRecords: Attendance[] = [];
-
-      // Extract all employee IDs from the records
       const employeeIds = records.map((record) => record.employeeId);
-
-      // Find employees by IDs
       const employees = await this.employeeRepository.findMany(employeeIds);
 
-      // Check if all employee records are found
       if (employees.length !== employeeIds.length) {
         throw new NotFoundException('Some employee records not found.');
       }
@@ -88,6 +86,7 @@ export class AttendanceService {
         attendanceRecords.push(attendanceRecord);
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Marked attendance successfully',
         data: attendanceRecords,
       };
@@ -100,7 +99,7 @@ export class AttendanceService {
   async uploadAttendanceSheet(
     uploadAttendanceSheetDto: UploadAttendanceSheetDto,
     attendanceSheet: Express.Multer.File,
-  ) {
+  ): Promise<IResponse<any>> {
     try {
       const { companyId, month } = uploadAttendanceSheetDto;
       const company = await this.companyRepository.findById(companyId);
@@ -118,6 +117,7 @@ export class AttendanceService {
           attendanceSheetUrl,
         );
       return {
+        statusCode: HttpStatus.OK,
         message: 'Attendance sheet uploaded successfully',
         data: saveAttendanceSheetResponse,
       };
@@ -137,7 +137,9 @@ export class AttendanceService {
     return null;
   }
 
-  async getAttendanceRecordsByCompanyId(companyId: string) {
+  async getAttendanceRecordsByCompanyId(
+    companyId: string,
+  ): Promise<IResponse<any>> {
     try {
       const company = await this.companyRepository.findById(companyId);
       if (!company) {
@@ -151,6 +153,7 @@ export class AttendanceService {
         throw new NotFoundException(`No attendance records found`);
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Attendance records retrieved successfully',
         data: attendanceRecords,
       };
@@ -160,13 +163,17 @@ export class AttendanceService {
     }
   }
 
-  async getAttendanceRecordsByEmployeeId(employeeId: string) {
+  async getAttendanceRecordsByEmployeeId(
+    employeeId: string,
+  ): Promise<IResponse<any>> {
     try {
       const employee = await this.employeeRepository.getEmployeeById(
         employeeId,
       );
       if (!employee) {
-        throw new NotFoundException(`Employee with ID ${employee} not found.`);
+        throw new NotFoundException(
+          `Employee with ID ${employeeId} not found.`,
+        );
       }
       const attendanceRecords =
         await this.attendanceRepository.getAttendanceRecordsByEmployeeId(
@@ -176,6 +183,7 @@ export class AttendanceService {
         throw new NotFoundException(`No attendance records found`);
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Attendance records retrieved successfully',
         data: attendanceRecords,
       };
@@ -185,13 +193,14 @@ export class AttendanceService {
     }
   }
 
-  async getAll() {
+  async getAll(): Promise<IResponse<any>> {
     try {
       const attendanceRecords = await this.attendanceRepository.getAll();
       if (attendanceRecords.length === 0) {
         throw new NotFoundException(`No attendance records found`);
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Attendance records retrieved successfully',
         data: attendanceRecords,
       };
@@ -204,17 +213,19 @@ export class AttendanceService {
   async getAllAttendanceRecordsByCompanyIdAndMonth(
     companyId: string,
     month: string,
-  ) {
+  ): Promise<IResponse<any>> {
     try {
       const attendanceRecords =
         await this.attendanceRepository.getAllAttendanceRecordsByCompanyIdAndMonth(
           companyId,
           month,
         );
+
       if (attendanceRecords.length === 0) {
         throw new NotFoundException(`No attendance records found`);
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Attendance records retrieved successfully',
         data: attendanceRecords,
       };
@@ -224,7 +235,7 @@ export class AttendanceService {
     }
   }
 
-  async deleteAttendanceById(id: string) {
+  async deleteAttendanceById(id: string): Promise<IResponse<any>> {
     try {
       const attendance = await this.attendanceRepository.getAttendanceById(id);
       if (!attendance) {
@@ -235,6 +246,7 @@ export class AttendanceService {
       const deleteResponse =
         await this.attendanceRepository.deleteAttendanceById(id);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Attendance record deleted successfully',
         data: deleteResponse,
       };
@@ -244,7 +256,7 @@ export class AttendanceService {
     }
   }
 
-  async deleteMultipleAttendances(ids: string[]) {
+  async deleteMultipleAttendances(ids: string[]): Promise<IResponse<any>> {
     try {
       const attendances =
         await this.attendanceRepository.getAttendanceRecordsByIds(ids);
@@ -253,6 +265,7 @@ export class AttendanceService {
       }
       const deleteResponse = await this.attendanceRepository.deleteMany(ids);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Attendance records deleted successfully',
         data: deleteResponse,
       };

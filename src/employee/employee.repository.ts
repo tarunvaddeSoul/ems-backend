@@ -146,6 +146,21 @@ export class EmployeeRepository {
     });
   }
 
+  async findEmployeesByCompany(companyId: string): Promise<Employee[]> {
+    return this.prisma.employee.findMany({
+      where: {
+        employmentHistories: {
+          some: {
+            companyId,
+          },
+        },
+      },
+      include: {
+        employmentHistories: true,
+      },
+    });
+  }
+
   async updateEmployeeContactDetails(
     employeeId: string,
     data: any,
@@ -410,8 +425,8 @@ export class EmployeeRepository {
         { id: { contains: searchText, mode: 'insensitive' } },
       ];
     }
-    if (gender) where.gender = gender;
-    if (category) where.category = category;
+    if (gender && gender !== 'all') where.gender = gender;
+    if (category && category !== 'all') where.category = category;
     if (highestEducationQualification)
       where.highestEducationQualification = highestEducationQualification;
     if (minAge || maxAge) {

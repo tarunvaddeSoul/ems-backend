@@ -1,10 +1,10 @@
 export enum PresentDaysCount {
-  D26 = 'D26',
-  D27 = 'D27',
-  D28 = 'D28',
-  D29 = 'D29',
-  D30 = 'D30',
-  D31 = 'D31',
+  D26 = '26',
+  D27 = '27',
+  D28 = '28',
+  D29 = '29',
+  D30 = '30',
+  D31 = '31',
 }
 
 export enum PFOptions {
@@ -25,4 +25,38 @@ export enum BONUSOptions {
 export enum LWFOptions {
   TEN_RUPEES = '10 RUPEES',
   NO = 'NO',
+}
+
+export enum CompanyStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+}
+
+export enum SalaryFieldCategory {
+  MANDATORY_NO_RULES = 'MANDATORY_NO_RULES',
+  MANDATORY_WITH_RULES = 'MANDATORY_WITH_RULES',
+  OPTIONAL_NO_RULES = 'OPTIONAL_NO_RULES',
+  OPTIONAL_WITH_RULES = 'OPTIONAL_WITH_RULES',
+  CUSTOM = 'CUSTOM',
+}
+
+export enum SalaryFieldType {
+  TEXT = 'TEXT',
+  NUMBER = 'NUMBER',
+  DATE = 'DATE',
+  BOOLEAN = 'BOOLEAN',
+  SELECT = 'SELECT',
+}
+
+export enum SalaryFieldPurpose {
+  ALLOWANCE = 'ALLOWANCE',
+  DEDUCTION = 'DEDUCTION',
+  INFORMATION = 'INFORMATION',
+  CALCULATION = 'CALCULATION',
+}
+
+export enum SalaryPaidStatus {
+  PAID = 'PAID',
+  PENDING = 'PENDING',
+  HOLD = 'HOLD',
 }

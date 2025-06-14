@@ -10,6 +10,7 @@ import {
   Param,
   UseInterceptors,
   UploadedFile,
+  Res,
 } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto';
@@ -25,6 +26,7 @@ import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadAttendanceSheetDto } from './dto/upload-attendance-sheet.dto';
 import { GetAttendanceByCompanyAndMonthDto } from './dto/get-attendance.dto';
+import { Response } from 'express';
 
 @ApiTags('Attendance')
 @UseInterceptors(TransformInterceptor)
@@ -37,13 +39,14 @@ export class AttendanceController {
   @ApiOperation({ summary: 'Mark attendance for an employee' })
   @ApiResponse({ status: 201, description: 'Attendance marked successfully.' })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
-  // @ApiConsumes('multipart/form-data')
-  // @UseInterceptors(FileInterceptor('attendanceSheet'))
-  async markAttendance(@Body() markAttendanceDto: MarkAttendanceDto) {
-    const attendance = await this.attendanceService.markAttendance(
+  async markAttendance(
+    @Res() res: Response,
+    @Body() markAttendanceDto: MarkAttendanceDto,
+  ): Promise<Response> {
+    const response = await this.attendanceService.markAttendance(
       markAttendanceDto,
     );
-    return attendance;
+    return res.status(response.statusCode).json(response);
   }
 
   @Post('bulk')
@@ -53,11 +56,13 @@ export class AttendanceController {
     description: 'Mark attendance for multiple employees',
   })
   async bulkMarkAttendance(
+    @Res() res: Response,
     @Body() bulkMarkAttendanceDto: BulkMarkAttendanceDto,
-  ) {
-    return await this.attendanceService.bulkMarkAttendance(
+  ): Promise<Response> {
+    const response = await this.attendanceService.bulkMarkAttendance(
       bulkMarkAttendanceDto,
     );
+    return res.status(response.statusCode).json(response);
   }
 
   @Post('upload')
@@ -69,13 +74,15 @@ export class AttendanceController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('attendanceSheet'))
   async uploadAttendanceSheet(
+    @Res() res: Response,
     @Body() uploadAttendanceSheetDto: UploadAttendanceSheetDto,
     @UploadedFile() attendanceSheet?: Express.Multer.File,
-  ) {
-    return await this.attendanceService.uploadAttendanceSheet(
+  ): Promise<Response> {
+    const response = await this.attendanceService.uploadAttendanceSheet(
       uploadAttendanceSheetDto,
       attendanceSheet,
     );
+    return res.status(response.statusCode).json(response);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -87,13 +94,16 @@ export class AttendanceController {
   })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
   async getAllAttendanceRecordsByCompanyIdAndMonth(
+    @Res() res: Response,
     @Query() queryParams: GetAttendanceByCompanyAndMonthDto,
-  ) {
+  ): Promise<Response> {
     const { companyId, month } = queryParams;
-    return this.attendanceService.getAllAttendanceRecordsByCompanyIdAndMonth(
-      companyId,
-      month,
-    );
+    const response =
+      await this.attendanceService.getAllAttendanceRecordsByCompanyIdAndMonth(
+        companyId,
+        month,
+      );
+    return res.status(response.statusCode).json(response);
   }
 
   @Get(':companyId')
@@ -102,10 +112,13 @@ export class AttendanceController {
     summary: 'Retrieve attendance records by company',
     description: 'Retrieve attendance records by company',
   })
-  async getAttendanceRecordsByCompanyId(@Param('companyId') companyId: string) {
-    return await this.attendanceService.getAttendanceRecordsByCompanyId(
-      companyId,
-    );
+  async getAttendanceRecordsByCompanyId(
+    @Res() res: Response,
+    @Param('companyId') companyId: string,
+  ): Promise<Response> {
+    const response =
+      await this.attendanceService.getAttendanceRecordsByCompanyId(companyId);
+    return res.status(response.statusCode).json(response);
   }
 
   @Get('employee/:employeeId')
@@ -115,11 +128,12 @@ export class AttendanceController {
     description: 'Retrieve attendance records by employee',
   })
   async getAttendanceRecordsByEmployeeId(
+    @Res() res: Response,
     @Param('employeeId') employeeId: string,
-  ) {
-    return await this.attendanceService.getAttendanceRecordsByEmployeeId(
-      employeeId,
-    );
+  ): Promise<Response> {
+    const response =
+      await this.attendanceService.getAttendanceRecordsByEmployeeId(employeeId);
+    return res.status(response.statusCode).json(response);
   }
 
   @Get()
@@ -128,8 +142,9 @@ export class AttendanceController {
     summary: 'Retrieve attendance records',
     description: 'Retrieve attendance records',
   })
-  async getAll() {
-    return await this.attendanceService.getAll();
+  async getAll(@Res() res: Response): Promise<Response> {
+    const response = await this.attendanceService.getAll();
+    return res.status(response.statusCode).json(response);
   }
 
   @Delete(':id')
@@ -138,8 +153,12 @@ export class AttendanceController {
     summary: 'Delete Attendance',
     description: 'Delete attendance by ID',
   })
-  async deleteAttendanceById(@Param('id') id: string) {
-    await this.attendanceService.deleteAttendanceById(id);
+  async deleteAttendanceById(
+    @Res() res: Response,
+    @Param('id') id: string,
+  ): Promise<Response> {
+    const response = await this.attendanceService.deleteAttendanceById(id);
+    return res.status(response.statusCode).json(response);
   }
 
   @Delete()
@@ -149,10 +168,12 @@ export class AttendanceController {
     description: 'Delete multiple attendance records',
   })
   async deleteMultipleAttendances(
+    @Res() res: Response,
     @Body() deleteAttendanceDto: DeleteAttendanceDto,
-  ) {
-    return await this.attendanceService.deleteMultipleAttendances(
+  ): Promise<Response> {
+    const response = await this.attendanceService.deleteMultipleAttendances(
       deleteAttendanceDto.ids,
     );
+    return res.status(response.statusCode).json(response);
   }
 }

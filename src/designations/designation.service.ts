@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ export class DesignationService {
       }
       const createResponse = await this.designationRepository.create(name);
       return {
+        statusCode: HttpStatus.CREATED,
         message: 'Designation created successfully!',
         data: createResponse,
       };
@@ -36,6 +38,7 @@ export class DesignationService {
         );
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Designation created successfully!',
         data: designation,
       };
@@ -53,6 +56,7 @@ export class DesignationService {
         );
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Designation created successfully!',
         data: designation,
       };
@@ -71,6 +75,7 @@ export class DesignationService {
       }
       const deleteResponse = await this.designationRepository.deleteById(id);
       return {
+        statusCode: HttpStatus.OK,
         message: 'Designation deleted successfully.',
         data: deleteResponse,
       };
@@ -91,6 +96,7 @@ export class DesignationService {
         name,
       );
       return {
+        statusCode: HttpStatus.OK,
         message: 'Designation deleted successfully.',
         data: deleteResponse,
       };
@@ -106,6 +112,7 @@ export class DesignationService {
         throw new NotFoundException(`Designations not found.`);
       }
       return {
+        statusCode: HttpStatus.OK,
         message: 'Designations fetched successfully',
         data: designations,
       };

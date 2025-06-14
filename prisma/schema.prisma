@@ -37,7 +37,6 @@ model UserDepartment {
 model EmployeeDepartment {
   id   String @id @default(uuid())
   name String @unique
-  // employees Employee[]
 
   EmploymentHistory EmploymentHistory[]
 }
@@ -45,7 +44,6 @@ model EmployeeDepartment {
 model Designation {
   id   String @id @default(uuid())
   name String @unique
-  // employees Employee[]
 
   EmploymentHistory EmploymentHistory[]
 }
@@ -98,8 +96,8 @@ enum LWFOptions {
 }
 
 model Company {
-  id                    String           @id @default(uuid())
-  name                  String
+  id                    String              @id @default(uuid())
+  name                  String              @unique
   address               String
   contactPersonName     String
   contactPersonNumber   String
@@ -107,47 +105,36 @@ model Company {
   companyOnboardingDate String
   salaryTemplates       SalaryTemplate[]
   salaryRecords         SalaryRecord[]
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  PayrollPeriod         PayrollPeriod[]
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
   Attendance            Attendance[]
-  Salary                Salary[]
-
-  EmploymentHistory EmploymentHistory[]
+  EmploymentHistory     EmploymentHistory[]
 }
 
 model SalaryTemplate {
-  id        String   @id @default(uuid())
-  companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
-  fields    Json // Store the enabled/disabled status and default values
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(uuid())
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  mandatoryFields Json // Store the mandatory fields configuration
+  optionalFields  Json // Store the optional fields configuration
+  customFields    Json // Store any custom fields added by admin
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model SalaryRecord {
-  id         String   @id @default(uuid())
-  employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  companyId  String
-  company    Company  @relation(fields: [companyId], references: [id])
-  month      DateTime
-  salaryData Json // Store all salary-related fields
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  companyName String?
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  month       String
+  salaryData  Json 
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([employeeId, companyId, month])
-}
-
-model PayrollPeriod {
-  id        String   @id @default(uuid())
-  companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
-  startDate DateTime
-  endDate   DateTime
-  status    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 enum Category {
@@ -211,7 +198,6 @@ model Employee {
   employmentHistories EmploymentHistory[]
   salaryRecords       SalaryRecord[]
   attendances         Attendance[]
-  salaries            Salary[]
 }
 
 model EmploymentHistory {
@@ -332,48 +318,4 @@ model AttendanceSheet {
   attendanceSheetUrl String
 
   @@unique([companyId, month])
-}
-
-// model Salary {
-//   id         String   @id @default(uuid())
-//   employeeId String
-//   companyId  String
-//   amount     Float
-//   date       DateTime
-//   data       Json // Store all salary components
-//   employee   Employee @relation(fields: [employeeId], references: [id])
-//   company    Company  @relation(fields: [companyId], references: [id])
-// }
-
-model Salary {
-  id                    String   @id @default(uuid())
-  month                 String // Format: MM-YYYY
-  monthlySalary         Float
-  dutyDone              Int
-  wagesPerDay           Float
-  basicPay              Float
-  epfWages              Float
-  bonus                 Float
-  grossSalary           Float
-  pf                    Float
-  esic                  Float
-  advance               Float
-  uniform               Float
-  penalty               Float
-  lwf                   Float
-  otherDeductions       Float
-  otherDeductionsRemark String?
-  allowance             Float
-  allowanceRemark       String?
-  totalDeductions       Float
-  netSalary             Float
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  employeeId String
-  company    Company  @relation(fields: [companyId], references: [id])
-  companyId  String
-
-  @@unique([employeeId, companyId, month])
 }

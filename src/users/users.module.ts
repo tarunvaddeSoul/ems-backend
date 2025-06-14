@@ -4,7 +4,6 @@ import { UsersController } from './users.controller';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { jwt_config } from '../auth/config/jwt';
 import { UsersRepository } from './users.repository';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MailService } from './mail.service';
@@ -12,18 +11,18 @@ import { DepartmentRepository } from 'src/departments/department.repository';
 
 @Module({
   imports: [
+    ConfigModule.forRoot(),
     PassportModule.register({
       defaultStrategy: 'jwt',
       property: 'user',
       session: false,
     }),
     JwtModule.register({
-      secret: jwt_config.secret,
+      secret: process.env.JWT_SECRET,
       signOptions: {
-        expiresIn: jwt_config.expired,
+        expiresIn: process.env.JWT_EXPIRY,
       },
     }),
-    ConfigModule.forRoot(),
   ],
   controllers: [UsersController],
   providers: [

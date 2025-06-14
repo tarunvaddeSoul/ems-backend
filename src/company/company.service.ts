@@ -3,15 +3,20 @@ import {
   ConflictException,
   HttpStatus,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CompanyRepository } from './company.repository';
 import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
-import { CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
+import { UpdateCompanyDto } from './dto/company.dto';
 import { Company } from '@prisma/client';
 import { IResponse } from 'src/types/response.interface';
 import { GetEmployeesResponseDto } from './dto/get-employees-response.dto';
+import {
+  CreateCompanyDto,
+  SalaryTemplateFieldDto,
+} from './dto/create-company.dto';
 
 @Injectable()
 export class CompanyService {
@@ -20,29 +25,153 @@ export class CompanyService {
     private readonly logger: Logger,
   ) {}
 
-  async createCompany(data: CreateCompanyDto): Promise<IResponse<Company>> {
+  async createCompany(
+    createCompanyDto: CreateCompanyDto,
+  ): Promise<IResponse<Company>> {
     try {
-      const companyExists = await this.companyRepository.companyExists(
-        data.name,
+      // Validate company data doesn't already exist
+      await this.validateCompanyData(createCompanyDto);
+
+      // Validate the salary template configuration
+      this.validateSalaryTemplateConfig(createCompanyDto.salaryTemplates);
+
+      // Create company with validated data
+      const createdCompany = await this.companyRepository.create(
+        createCompanyDto,
       );
-      if (companyExists) {
-        throw new ConflictException(
-          `Company with name: ${data.name} already exists.`,
-        );
-      }
-      const createCompanyResponse = await this.companyRepository.create(data);
-      if (!createCompanyResponse) {
-        throw new BadRequestException(`Error creating company`);
-      }
+
       return {
         statusCode: HttpStatus.CREATED,
         message: 'Company created successfully',
-        data: createCompanyResponse,
+        data: createdCompany,
       };
     } catch (error) {
-      this.logger.error(`Error creating company`);
-      throw error;
+      if (
+        error instanceof ConflictException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      this.logger.error(
+        `Failed to create company: ${error.message}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException(
+        'Failed to create company due to an unexpected error',
+      );
     }
+  }
+
+  private async validateCompanyData(
+    createCompanyDto: CreateCompanyDto,
+  ): Promise<void> {
+    // Check if company already exists
+    const companyExists = await this.companyRepository.findByName(
+      createCompanyDto.name,
+    );
+    if (companyExists) {
+      throw new ConflictException(
+        `Company with name: ${createCompanyDto.name} already exists.`,
+      );
+    }
+    // Check if phone number is already in use
+    // const phoneExists = await this.companyRepository.findByContactNumber(
+    //   createCompanyDto.contactPersonNumber,
+    // );
+    // if (phoneExists) {
+    //   throw new ConflictException(
+    //     `Contact number ${createCompanyDto.contactPersonNumber} is already associated with another company.`,
+    //   );
+    // }
+  }
+
+  private validateSalaryTemplateConfig(salaryTemplateConfig: any): void {
+    const { mandatoryFields, optionalFields, customFields } =
+      salaryTemplateConfig;
+
+    // Validate mandatory fields requirements
+    this.validateMandatoryFields(mandatoryFields);
+
+    // Validate "basic duty" is configured properly if present
+    this.validateBasicDutyField([
+      ...mandatoryFields,
+      ...optionalFields,
+      ...(customFields || []),
+    ]);
+
+    // Validate custom fields if present
+    if (customFields && customFields.length > 0) {
+      this.validateCustomFields(customFields);
+    }
+  }
+
+  private validateMandatoryFields(
+    mandatoryFields: SalaryTemplateFieldDto[],
+  ): void {
+    // Check that all required mandatory fields are present and enabled
+    const requiredKeys = [
+      'serialNumber',
+      'companyName',
+      'employeeName',
+      'designation',
+      'monthlyPay',
+      'grossSalary',
+      'totalDeduction',
+      'netSalary',
+    ];
+
+    const mandatoryFieldKeys = mandatoryFields
+      .filter((field) => field.enabled)
+      .map((field) => field.key);
+
+    const missingFields = requiredKeys.filter(
+      (key) => !mandatoryFieldKeys.includes(key),
+    );
+
+    if (missingFields.length > 0) {
+      throw new BadRequestException(
+        `Following mandatory fields must be enabled: ${missingFields.join(
+          ', ',
+        )}`,
+      );
+    }
+  }
+
+  private validateBasicDutyField(allFields: SalaryTemplateFieldDto[]): void {
+    const basicDutyField = allFields.find((field) => field.key === 'basicDuty');
+
+    if (basicDutyField && basicDutyField.enabled) {
+      // Ensure basic duty has proper rules
+      if (
+        !basicDutyField.rules ||
+        Number(basicDutyField.rules.defaultValue) < 26 ||
+        Number(basicDutyField.rules.defaultValue) > 31
+      ) {
+        throw new BadRequestException(
+          'Basic duty field must have rules with minValue >= 26 and maxValue <= 31',
+        );
+      }
+    }
+  }
+
+  private validateCustomFields(customFields: SalaryTemplateFieldDto[]): void {
+    // Ensure all custom fields have unique keys
+    const customFieldKeys = customFields.map((field) => field.key);
+    if (new Set(customFieldKeys).size !== customFieldKeys.length) {
+      throw new BadRequestException('Custom fields must have unique keys');
+    }
+
+    // Validate each custom field has proper configuration
+    customFields.forEach((field) => {
+      if (!field.key || !field.label || !field.type) {
+        throw new BadRequestException(
+          `Custom field ${
+            field.key || 'unnamed'
+          } is missing required properties (key, label, type)`,
+        );
+      }
+    });
   }
 
   async updateCompany(
@@ -50,10 +179,17 @@ export class CompanyService {
     data: UpdateCompanyDto,
   ): Promise<IResponse<Company>> {
     try {
+      // Optionally validate company exists
       const company = await this.companyRepository.findById(id);
       if (!company) {
         throw new NotFoundException(`Company with id: ${id} does not exist.`);
       }
+
+      // Optionally validate salary template config if present
+      if (data.salaryTemplates) {
+        this.validateSalaryTemplateConfig(data.salaryTemplates);
+      }
+
       const updateCompanyResponse = await this.companyRepository.update(
         id,
         data,

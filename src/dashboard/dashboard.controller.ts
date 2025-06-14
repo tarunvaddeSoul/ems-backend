@@ -1,6 +1,6 @@
-import { Controller, Get, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Query, UseInterceptors } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiQuery, ApiTags } from '@nestjs/swagger';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 
 @Controller('dashboard')
@@ -9,22 +9,60 @@ import { TransformInterceptor } from 'src/common/transform-interceptor';
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
-  @Get()
-  async getDashboardData() {
-    const totalEmployees = await this.dashboardService.getTotalEmployees();
-    const newEmployeesThisMonth =
-      await this.dashboardService.getNewEmployeesThisMonth();
-    const totalCompanies = await this.dashboardService.getTotalCompanies();
-    const newCompaniesThisMonth =
-      await this.dashboardService.getNewCompaniesThisMonth();
+  @Get('report')
+  @ApiQuery({ name: 'daysAhead', required: false, type: Number, example: 30 })
+  async getDashboardReport(@Query('daysAhead') daysAhead?: number) {
+    const [
+      totalEmployees,
+      newEmployeesThisMonth,
+      employeesByDepartment,
+      employeesByDesignation,
+      activeInactiveEmployees,
+      activeInactiveCompanies,
+      totalCompanies,
+      newCompaniesThisMonth,
+      birthdays,
+      anniversaries,
+      recentJoinees,
+      recentPayrolls,
+    ] = await Promise.all([
+      this.dashboardService.getTotalEmployees(),
+      this.dashboardService.getNewEmployeesThisMonth(),
+      this.dashboardService.getEmployeesByDepartment(),
+      this.dashboardService.getEmployeesByDesignation(),
+      this.dashboardService.getActiveInactiveCountsInEmployees(),
+      this.dashboardService.getActiveInactiveCountsInCompanies(),
+      this.dashboardService.getTotalCompanies(),
+      this.dashboardService.getNewCompaniesThisMonth(),
+      this.dashboardService.getUpcomingBirthdays(daysAhead ?? 30),
+      this.dashboardService.getUpcomingAnniversaries(daysAhead ?? 30),
+      this.dashboardService.getRecentJoinees(5),
+      this.dashboardService.getRecentPayrolls(5),
+    ]);
 
     return {
-      message: 'Dashboard data fetched successfully!',
+      message: 'Dashboard report fetched successfully!',
       data: {
-        totalEmployees,
-        newEmployeesThisMonth,
-        totalCompanies,
-        newCompaniesThisMonth,
+        employeeStats: {
+          totalEmployees,
+          newEmployeesThisMonth,
+          employeesByDepartment,
+          employeesByDesignation,
+          activeInactive: activeInactiveEmployees,
+        },
+        companyStats: {
+          totalCompanies,
+          newCompaniesThisMonth,
+          activeInactive: activeInactiveCompanies,
+        },
+        specialDates: {
+          birthdays,
+          anniversaries,
+        },
+        recentActivity: {
+          recentJoinees,
+          recentPayrolls,
+        },
       },
     };
   }

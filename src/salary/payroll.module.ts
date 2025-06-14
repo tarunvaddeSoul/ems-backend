@@ -1,22 +1,22 @@
 import { Logger, Module } from '@nestjs/common';
-import { SalaryService } from './salary.service';
-import { SalaryController } from './salary.controller';
+import { PayrollController } from './payroll.controller';
 import { EmployeeRepository } from 'src/employee/employee.repository';
 import { AttendanceRepository } from 'src/attendance/attendance.repository';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CompanyRepository } from 'src/company/company.repository';
-import { SalaryRepository } from './salary.repository';
+import { PayrollRepository } from './payroll.repository';
+import { PayrollService } from './payroll.service';
 
 @Module({
-  controllers: [SalaryController],
+  controllers: [PayrollController],
   providers: [
-    SalaryService,
     EmployeeRepository,
     AttendanceRepository,
     CompanyRepository,
     Logger,
     PrismaService,
-    SalaryRepository,
+    PayrollRepository,
+    PayrollService,
   ],
 })
-export class SalaryModule {}
+export class PayrollModule {}

@@ -29,6 +29,7 @@ import { Role } from '@prisma/client';
 import { Response } from 'express';
 import { Auth } from './auth.decorator';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('users')
 @UseInterceptors(TransformInterceptor)
@@ -59,6 +60,41 @@ export class UsersController {
     @Body() loginDto: LoginDto,
   ): Promise<Response> {
     const response = await this.usersService.login(loginDto);
+    return res.status(response.statusCode).json(response);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('Bearer')
+  @Put('update/:id')
+  @ApiOperation({ summary: 'Update user details' })
+  @ApiParam({ name: 'id', type: String, description: 'User ID' })
+  @ApiBody({ type: UpdateUserDto })
+  @ApiResponse({
+    status: 200,
+    description: 'User updated successfully.',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'User updated successfully',
+        data: {
+          id: 'user-uuid',
+          name: 'John Doe',
+          email: 'john@example.com',
+          mobileNumber: '9876543210',
+          role: 'USER',
+          departmentId: 'department-uuid',
+          createdAt: '2024-06-01T12:00:00.000Z',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'User not found.' })
+  async updateUser(
+    @Res() res: Response,
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ): Promise<Response> {
+    const response = await this.usersService.updateUser(id, updateUserDto);
     return res.status(response.statusCode).json(response);
   }
 
