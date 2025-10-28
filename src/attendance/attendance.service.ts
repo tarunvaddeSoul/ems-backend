@@ -70,7 +70,6 @@ export class AttendanceService {
   ): Promise<IResponse<Attendance[]>> {
     try {
       const { records } = bulkMarkAttendanceDto;
-      const attendanceRecords: Attendance[] = [];
       const employeeIds = records.map((record) => record.employeeId);
       const employees = await this.employeeRepository.findMany(employeeIds);
 
@@ -78,13 +77,9 @@ export class AttendanceService {
         throw new NotFoundException('Some employee records not found.');
       }
 
-      for (const record of records) {
-        const { employeeId, month, presentCount, companyId } = record;
-        const attendanceRecord = await this.attendanceRepository.markAttendance(
-          { employeeId, month, presentCount, companyId },
-        );
-        attendanceRecords.push(attendanceRecord);
-      }
+      // Use batch operation for better performance
+      const attendanceRecords = await this.attendanceRepository.bulkMarkAttendance(records);
+
       return {
         statusCode: HttpStatus.OK,
         message: 'Marked attendance successfully',
