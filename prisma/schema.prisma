@@ -109,6 +109,10 @@ model Company {
   updatedAt             DateTime            @updatedAt
   Attendance            Attendance[]
   EmploymentHistory     EmploymentHistory[]
+
+  @@index([status])
+  @@index([name])
+  @@index([status, createdAt])
 }
 
 model SalaryTemplate {
@@ -135,6 +139,9 @@ model SalaryRecord {
   updatedAt   DateTime @updatedAt
 
   @@unique([employeeId, companyId, month])
+  @@index([companyId, month])
+  @@index([employeeId])
+  @@index([companyId])
 }
 
 enum Category {
@@ -198,6 +205,10 @@ model Employee {
   employmentHistories EmploymentHistory[]
   salaryRecords       SalaryRecord[]
   attendances         Attendance[]
+
+  @@index([status])
+  @@index([firstName, lastName])
+  @@index([status, createdAt])
 }
 
 model EmploymentHistory {
@@ -219,6 +230,11 @@ model EmploymentHistory {
   status          String
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
+
+  @@index([employeeId, status])
+  @@index([companyId, status])
+  @@index([employeeId, companyId])
+  @@index([status])
 }
 
 model EmployeeContactDetails {
@@ -309,6 +325,9 @@ model Attendance {
   company      Company? @relation(fields: [companyId], references: [id])
 
   @@unique([employeeId, companyId, month])
+  @@index([companyId, month])
+  @@index([employeeId])
+  @@index([companyId])
 }
 
 model AttendanceSheet {
