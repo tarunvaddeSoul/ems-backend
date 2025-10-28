@@ -18,25 +18,25 @@ export class DashboardRepository {
       0,
     );
 
-    const formattedFirstDay =
-      this.formatDateToComparableString(firstDayOfMonth);
+    // Format dates to match the database format (DD-MM-YYYY)
+    const formattedFirstDay = this.formatDateToComparableString(firstDayOfMonth);
     const formattedLastDay = this.formatDateToComparableString(lastDayOfMonth);
 
-    const employeesInDateRange = await this.prisma.employee.findMany();
-    if (employeesInDateRange.length == 0) {
-      return 0;
-    }
+    // Filter employees in memory since we're comparing string dates
+    // Note: This could be further optimized by normalizing date storage in the database
+    const allEmployees = await this.prisma.employee.findMany({
+      select: { employeeOnboardingDate: true },
+    });
 
-    const filteredEmployees = employeesInDateRange.filter((employee) => {
+    return allEmployees.filter((employee) => {
+      if (!employee.employeeOnboardingDate) return false;
       const employeeDate = this.formatDateToComparableString(
         this.parseDate(employee.employeeOnboardingDate),
       );
       return (
         employeeDate >= formattedFirstDay && employeeDate <= formattedLastDay
       );
-    });
-
-    return filteredEmployees.length;
+    }).length;
   }
 
   private formatDateToComparableString(date: Date): string {
@@ -81,8 +81,15 @@ export class DashboardRepository {
     const end = new Date();
     end.setDate(today.getDate() + daysAhead);
 
-    // Fetch all employees
-    const employees = await this.prisma.employee.findMany();
+    // Fetch only necessary fields for filtering
+    const employees = await this.prisma.employee.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+      },
+    });
 
     // Filter for birthdays in the next `daysAhead` days
     return employees.filter((emp) => {
@@ -114,8 +121,15 @@ export class DashboardRepository {
     const end = new Date();
     end.setDate(today.getDate() + daysAhead);
 
-    // Fetch all employees
-    const employees = await this.prisma.employee.findMany();
+    // Fetch only necessary fields for filtering
+    const employees = await this.prisma.employee.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        employeeOnboardingDate: true,
+      },
+    });
 
     // Filter for anniversaries in the next `daysAhead` days
     return employees.filter((emp) => {
