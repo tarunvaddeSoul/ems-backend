@@ -258,9 +258,7 @@ export class CompanyService {
       const companiesResponse = await this.companyRepository.findAll(
         queryParams,
       );
-      if (companiesResponse.companies.length === 0) {
-        throw new NotFoundException(`No companies found`);
-      }
+
       return {
         statusCode: HttpStatus.OK,
         message: 'Companies fetched successfully',
