@@ -447,73 +447,80 @@ export class PayrollService {
     // Parse the salary template configuration
     const templateConfig = this.parseSalaryTemplateConfig(salaryTemplate);
 
-    // Get attendance data for the month
+    // Batch get attendance data for all employees in one query
     const attendanceData = await this.payrollRepository.getAttendanceByMonth(
       employees.map((e) => e.id),
       companyId,
       payrollMonth,
     );
 
+    // Batch get all employment histories in a single query instead of N+1
+    const employeeIds = employees.map((e) => e.id);
+    const allEmploymentHistories = await this.employeeRepository.getActiveEmploymentHistories(
+      employeeIds,
+      companyId,
+    );
+
+    // Create a map for O(1) lookup
+    const employmentMap = new Map(
+      allEmploymentHistories.map((eh) => [eh.employeeId, eh]),
+    );
+
     // Calculate payroll for each employee
-    return Promise.all(
-      employees.map(async (employee, idx) => {
-        try {
-          // Get employee's employment details for this company
-          const currentEmployment =
-            await this.employeeRepository.getCurrentEmploymentHistory(
-              employee.id,
-            );
+    return employees.map((employee, idx) => {
+      try {
+        // Get employee's employment details for this company
+        const currentEmployment = employmentMap.get(employee.id);
 
-          if (!currentEmployment) {
-            return {
-              employeeId: employee.id,
-              employeeName: `${employee.firstName} ${employee.lastName}`,
-              error: 'Employee is not currently employed by this company',
-            };
-          }
-
-          // Get employee's attendance
-          const attendance = attendanceData.find(
-            (a) => a.employeeId === employee.id,
-          );
-          const presentDays = attendance ? attendance.presentCount : 0;
-
-          // Get admin input for this employee
-          const adminInput = adminInputs?.[employee.id] || {};
-
-          // Calculate salary based on template, attendance, and admin input
-          const salaryCalculation = this.calculateEmployeeSalary(
-            employee,
-            currentEmployment,
-            templateConfig,
-            basicDuty,
-            presentDays,
-            adminInput,
-          );
-
-          // Set serial number (1-based index)
-          salaryCalculation.serialNumber = idx + 1;
-
+        if (!currentEmployment || currentEmployment.companyId !== companyId) {
           return {
             employeeId: employee.id,
             employeeName: `${employee.firstName} ${employee.lastName}`,
-            presentDays,
-            salary: salaryCalculation,
-          };
-        } catch (error) {
-          this.logger.error(
-            `Error calculating salary for employee ${employee.id}: ${error.message}`,
-            error.stack,
-          );
-
-          return {
-            employeeId: employee.id,
-            employeeName: `${employee.firstName} ${employee.lastName}`,
-            error: 'Failed to calculate salary',
+            error: 'Employee is not currently employed by this company',
           };
         }
-      }),
-    );
+
+        // Get employee's attendance
+        const attendance = attendanceData.find(
+          (a) => a.employeeId === employee.id,
+        );
+        const presentDays = attendance ? attendance.presentCount : 0;
+
+        // Get admin input for this employee
+        const adminInput = adminInputs?.[employee.id] || {};
+
+        // Calculate salary based on template, attendance, and admin input
+        const salaryCalculation = this.calculateEmployeeSalary(
+          employee,
+          currentEmployment,
+          templateConfig,
+          basicDuty,
+          presentDays,
+          adminInput,
+        );
+
+        // Set serial number (1-based index)
+        salaryCalculation.serialNumber = idx + 1;
+
+        return {
+          employeeId: employee.id,
+          employeeName: `${employee.firstName} ${employee.lastName}`,
+          presentDays,
+          salary: salaryCalculation,
+        };
+      } catch (error) {
+        this.logger.error(
+          `Error calculating salary for employee ${employee.id}: ${error.message}`,
+          error.stack,
+        );
+
+        return {
+          employeeId: employee.id,
+          employeeName: `${employee.firstName} ${employee.lastName}`,
+          error: 'Failed to calculate salary',
+        };
+      }
+    });
   }
 
   private parseSalaryTemplateConfig(salaryTemplate: SalaryTemplate): any {
