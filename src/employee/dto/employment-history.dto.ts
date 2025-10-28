@@ -43,6 +43,12 @@ export class CreateEmploymentHistoryDto {
   @IsNotEmpty()
   @IsEnum(Status)
   status?: Status;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateFormat({ message: 'leavingDate must be in the format DD-MM-YYYY' })
+  @IsString()
+  leavingDate: string;
 }
 
 export class UpdateEmploymentHistoryDto {
