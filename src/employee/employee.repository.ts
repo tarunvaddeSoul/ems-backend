@@ -273,11 +273,20 @@ export class EmployeeRepository {
     id: string,
     data: Prisma.EmploymentHistoryUpdateInput,
   ): Promise<EmploymentHistory> {
+    console.log(data, id);
     const updateResponse = await this.prisma.employmentHistory.update({
       where: { id },
       data,
     });
     return updateResponse;
+  }
+
+  async getEmploymentHistoryById(
+    id: string,
+  ): Promise<EmploymentHistory | null> {
+    return this.prisma.employmentHistory.findUnique({
+      where: { id },
+    });
   }
 
   async getEmploymentHistory(employeeId: string): Promise<EmploymentHistory[]> {
@@ -289,11 +298,11 @@ export class EmployeeRepository {
 
   async getCurrentEmploymentHistory(
     employeeId: string,
-  ): Promise<EmploymentHistory> {
+  ): Promise<EmploymentHistory | null> {
     return this.prisma.employmentHistory.findFirst({
       where: {
         employeeId,
-        leavingDate: null,
+        status: Status.ACTIVE,
       },
       orderBy: { joiningDate: 'desc' },
     });
