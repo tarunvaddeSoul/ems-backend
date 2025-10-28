@@ -41,6 +41,36 @@ export class AttendanceRepository {
     }
   }
 
+  async bulkMarkAttendance(records: MarkAttendanceDto[]): Promise<Attendance[]> {
+    try {
+      // Use a transaction to ensure all records are created atomically
+      return await this.prisma.$transaction(
+        records.map((record) =>
+          this.prisma.attendance.upsert({
+            where: {
+              employeeId_companyId_month: {
+                employeeId: record.employeeId,
+                companyId: record.companyId,
+                month: record.month,
+              },
+            },
+            update: {
+              presentCount: record.presentCount,
+            },
+            create: {
+              employeeId: record.employeeId,
+              month: record.month,
+              presentCount: record.presentCount,
+              companyId: record.companyId,
+            },
+          }),
+        ),
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async getAttendanceById(id: string) {
     try {
       const attendance = await this.prisma.attendance.findUnique({
