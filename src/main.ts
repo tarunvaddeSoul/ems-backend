@@ -4,6 +4,8 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { NestExpressApplication } from '@nestjs/platform-express';
+// @ts-ignore - compression types will be installed
+import * as compression from 'compression';
 
 async function bootstrap() {
   // ✅ Secure CORS
@@ -14,6 +16,9 @@ async function bootstrap() {
       allowedHeaders: 'Content-Type, Authorization',
     },
   });
+
+  // ✅ Response compression for better performance
+  app.use(compression());
 
   // ✅ Helmet Security Middleware
   // ✅ Content Security Policy (CSP)
