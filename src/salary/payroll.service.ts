@@ -459,23 +459,10 @@ export class PayrollService {
       employees.map(async (employee, idx) => {
         try {
           // Get employee's employment details for this company
-          const employmentHistory =
-            await this.employeeRepository.getEmploymentHistory(employee.id);
-
-          if (!employmentHistory || !employmentHistory.length) {
-            return {
-              employeeId: employee.id,
-              employeeName: `${employee.firstName} ${employee.lastName}`,
-              error: 'No employment history found',
-            };
-          }
-
-          // Find current employment for this company
-          const currentEmployment = employmentHistory.find(
-            (history) =>
-              history.companyId === salaryTemplate.companyId &&
-              !history.leavingDate,
-          );
+          const currentEmployment =
+            await this.employeeRepository.getCurrentEmploymentHistory(
+              employee.id,
+            );
 
           if (!currentEmployment) {
             return {
@@ -506,14 +493,6 @@ export class PayrollService {
 
           // Set serial number (1-based index)
           salaryCalculation.serialNumber = idx + 1;
-
-          // // Save the calculated salary record
-          // await this.payrollRepository.saveSalaryRecord(
-          //   employee.id,
-          //   salaryTemplate.companyId,
-          //   payrollMonth,
-          //   salaryCalculation,
-          // );
 
           return {
             employeeId: employee.id,
