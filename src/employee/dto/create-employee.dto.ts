@@ -257,7 +257,7 @@ export class CreateEmployeeDto {
   @ApiProperty({ type: 'number' })
   @IsOptional()
   @IsNumber()
-  @IsPositive()
+  // @IsPositive()
   @Type(() => Number)
   currentCompanySalary?: number;
 
