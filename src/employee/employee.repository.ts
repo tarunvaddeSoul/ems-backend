@@ -308,6 +308,25 @@ export class EmployeeRepository {
     });
   }
 
+  async getActiveEmploymentHistories(
+    employeeIds: string[],
+    companyId: string,
+  ): Promise<EmploymentHistory[]> {
+    return this.prisma.employmentHistory.findMany({
+      where: {
+        employeeId: { in: employeeIds },
+        companyId,
+        status: Status.ACTIVE,
+      },
+      orderBy: { joiningDate: 'desc' },
+      include: {
+        company: true,
+        designation: true,
+        department: true,
+      },
+    });
+  }
+
   async createEmploymentHistory(data: any): Promise<EmploymentHistory> {
     return await this.prisma.employmentHistory.create({ data });
   }
