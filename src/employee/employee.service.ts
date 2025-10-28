@@ -2,6 +2,7 @@ import {
   BadRequestException,
   HttpStatus,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -24,6 +25,7 @@ import {
   EmployeeDocumentUploads,
   EmployeeReferenceDetails,
   EmploymentHistory,
+  Status,
 } from '@prisma/client';
 import { IEmployee } from './interface/employee.interface';
 import { CompanyRepository } from 'src/company/company.repository';
@@ -368,20 +370,29 @@ export class EmployeeService {
       salary,
       joiningDate,
       status,
+      leavingDate, // Add this field
     } = createDto;
-    const currentEmployment =
-      await this.employeeRepository.getCurrentEmploymentHistory(
-        createDto.employeeId,
-      );
-    if (currentEmployment) {
-      throw new BadRequestException(
-        'Employee already has an active employment record',
-      );
+
+    // Only check for active employment if we're creating a new active employment
+    if (status === Status.ACTIVE) {
+      const currentEmployment =
+        await this.employeeRepository.getCurrentEmploymentHistory(
+          createDto.employeeId,
+        );
+      if (currentEmployment) {
+        throw new BadRequestException(
+          'Employee already has an active employment record',
+        );
+      }
     }
 
-    const companyResponse = await this.companyRepository.findById(
-      createDto.companyId,
-    );
+    // Validate that leaving date is after joining date if provided
+    if (leavingDate && new Date(leavingDate) <= new Date(joiningDate)) {
+      throw new BadRequestException('Leaving date must be after joining date');
+    }
+
+    // Rest of your validation code...
+    const companyResponse = await this.companyRepository.findById(companyId);
     if (!companyResponse) {
       throw new NotFoundException(`No company found with ID: ${companyId}`);
     }
@@ -410,14 +421,17 @@ export class EmployeeService {
       departmentId,
       salary,
       joiningDate,
+      leavingDate,
       companyName: companyResponse.name,
       departmentName: designationResponse.name,
       designationName: designationResponse.name,
       status: status,
     };
+
     const saveResponse = await this.employeeRepository.createEmploymentHistory(
       saveEmploymentHistoryPayload,
     );
+
     return {
       statusCode: HttpStatus.CREATED,
       message: 'Employment record created successfully!',
@@ -430,23 +444,52 @@ export class EmployeeService {
     updateDto: UpdateEmploymentHistoryDto,
   ): Promise<IResponse<EmploymentHistory>> {
     try {
-      const existingEmploymentHistory =
-        await this.employeeRepository.getCurrentEmploymentHistory(id);
-      if (!existingEmploymentHistory) {
+      const employmentToUpdate =
+        await this.employeeRepository.getEmploymentHistoryById(id);
+      if (!employmentToUpdate) {
         throw new NotFoundException(
           `Employment history with ID: ${id} not found.`,
         );
       }
+
+      // If making inactive, ensure leaving date is set
+      if (updateDto.status === Status.INACTIVE && !updateDto.leavingDate) {
+        updateDto.leavingDate = new Date().toISOString();
+      }
+
+      // If making active, ensure no other active employment exists
+      if (updateDto.status === Status.ACTIVE) {
+        const currentActive =
+          await this.employeeRepository.getCurrentEmploymentHistory(
+            employmentToUpdate.employeeId,
+          );
+
+        if (currentActive && currentActive.id !== id) {
+          // Deactivate the current active employment with leaving date
+          await this.employeeRepository.updateEmploymentHistory(
+            currentActive.id,
+            {
+              status: Status.INACTIVE,
+              leavingDate: new Date().toISOString(),
+            },
+          );
+        }
+      }
+
       const updateResponse =
         await this.employeeRepository.updateEmploymentHistory(id, updateDto);
-
       return {
         statusCode: HttpStatus.OK,
         message: 'Employment history updated successfully!',
         data: updateResponse,
       };
     } catch (error) {
-      throw error;
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to update employment history. Please try again.',
+      );
     }
   }
 
@@ -454,23 +497,39 @@ export class EmployeeService {
     employeeId: string,
     leavingDate: string,
   ): Promise<IResponse<EmploymentHistory>> {
-    const currentEmployment =
-      await this.employeeRepository.getCurrentEmploymentHistory(employeeId);
+    try {
+      const currentEmployment =
+        await this.employeeRepository.getCurrentEmploymentHistory(employeeId);
 
-    if (!currentEmployment) {
-      throw new NotFoundException(
-        `No active employment found for employee with ID ${employeeId}`,
+      if (!currentEmployment) {
+        throw new NotFoundException(
+          `No active employment found for employee with ID ${employeeId}`,
+        );
+      }
+
+      // Update both status and leaving date
+      const closeResponse =
+        await this.employeeRepository.updateEmploymentHistory(
+          currentEmployment.id,
+          {
+            leavingDate,
+            status: Status.INACTIVE,
+          },
+        );
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: `Employee's current employment closed successfully`,
+        data: closeResponse,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to close employment. Please try again.',
       );
     }
-    const closeResponse = await this.employeeRepository.updateEmploymentHistory(
-      currentEmployment.id,
-      { leavingDate, status: 'INACTIVE' },
-    );
-    return {
-      statusCode: HttpStatus.OK,
-      message: `Employee's current employment closed`,
-      data: closeResponse,
-    };
   }
 
   async getEmploymentHistory(
