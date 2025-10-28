@@ -3,7 +3,7 @@ import {
   SalaryFieldPurpose,
   SalaryFieldType,
   SalaryPaidStatus,
-} from 'src/company/enum/company.enum';
+} from '../src/company/enum/company.enum';
 import { PrismaService } from '../src/prisma/prisma.service';
 import * as dotenv from 'dotenv';
 
