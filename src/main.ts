@@ -60,6 +60,15 @@ async function bootstrap() {
     next();
   });
 
+  // ✅ Disable caching for API responses to prevent 304 responses
+  app.use((req, res, next) => {
+    // Disable caching for all API responses
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
