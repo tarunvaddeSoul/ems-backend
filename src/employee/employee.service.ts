@@ -209,6 +209,15 @@ export class EmployeeService {
       if (!existingEmployee) {
         throw new NotFoundException(`Employee with ID: ${id} not found.`);
       }
+
+      // If dateOfBirth is being updated, automatically recalculate age
+      // Age is always calculated from dateOfBirth to ensure consistency
+      if (updateEmployeeDto.dateOfBirth !== undefined) {
+        const newAge = this.calculateAge(updateEmployeeDto.dateOfBirth);
+        // Override any manually provided age with calculated value
+        updateEmployeeDto.age = newAge;
+      }
+
       const updateResponse = await this.employeeRepository.updateEmployee(
         id,
         updateEmployeeDto,

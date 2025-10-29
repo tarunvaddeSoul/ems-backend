@@ -82,7 +82,10 @@ export class UpdateEmployeeDto {
   @IsString()
   recruitedBy?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: 'Age is automatically calculated from dateOfBirth when dateOfBirth is updated. Manual age values will be overridden if dateOfBirth is provided.',
+    readOnly: true,
+  })
   @IsOptional()
   @IsInt()
   age?: number;
