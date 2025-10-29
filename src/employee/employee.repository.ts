@@ -436,6 +436,7 @@ export class EmployeeRepository {
       gender,
       category,
       highestEducationQualification,
+      status,
       minAge,
       maxAge,
       sortBy,
@@ -455,6 +456,7 @@ export class EmployeeRepository {
     }
     if (gender && gender !== 'all') where.gender = gender;
     if (category && category !== 'all') where.category = category;
+    if (status) where.status = status;
     if (highestEducationQualification)
       where.highestEducationQualification = highestEducationQualification;
     if (minAge || maxAge) {

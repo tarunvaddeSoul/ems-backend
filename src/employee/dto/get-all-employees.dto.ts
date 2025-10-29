@@ -2,6 +2,7 @@ import { IsOptional, IsInt, Min, Max, IsString, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsDateFormat } from '../../common/validators/date-format.decorator';
+import { Status } from '@prisma/client';
 
 enum SortOrder {
   ASC = 'asc',
@@ -58,6 +59,14 @@ export class GetAllEmployeesDto {
   @IsOptional()
   @IsString()
   highestEducationQualification?: string;
+
+  @ApiPropertyOptional({
+    enum: Status,
+    description: 'Filter employees by status (ACTIVE or INACTIVE)',
+  })
+  @IsOptional()
+  @IsEnum(Status)
+  status?: Status;
 
   @ApiPropertyOptional()
   @IsOptional()

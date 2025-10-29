@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsOptional, IsInt, Min, IsString, IsEnum } from 'class-validator';
+import { CompanyStatus } from '../enum/company.enum';
 
 enum SortOrder {
   ASC = 'asc',
@@ -56,4 +57,13 @@ export class GetAllCompaniesDto {
   @IsOptional()
   @IsString()
   searchText?: string;
+
+  @ApiProperty({
+    required: false,
+    enum: CompanyStatus,
+    description: 'Filter companies by status (ACTIVE or INACTIVE)',
+  })
+  @IsOptional()
+  @IsEnum(CompanyStatus)
+  status?: CompanyStatus;
 }

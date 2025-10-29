@@ -230,29 +230,33 @@ export class CompanyRepository {
     companies: Company[];
     total: number;
   }> {
-    const { page, limit, sortBy, sortOrder, searchText } = query;
+    const { page, limit, sortBy, sortOrder, searchText, status } = query;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.CompanyWhereInput = searchText
-      ? {
-          OR: [
-            { name: { contains: searchText, mode: 'insensitive' } },
-            { address: { contains: searchText, mode: 'insensitive' } },
-            {
-              contactPersonName: {
-                contains: searchText,
-                mode: 'insensitive',
-              },
-            },
-            {
-              contactPersonNumber: {
-                contains: searchText,
-                mode: 'insensitive',
-              },
-            },
-          ],
-        }
-      : {};
+    const where: Prisma.CompanyWhereInput = {};
+
+    if (searchText) {
+      where.OR = [
+        { name: { contains: searchText, mode: 'insensitive' } },
+        { address: { contains: searchText, mode: 'insensitive' } },
+        {
+          contactPersonName: {
+            contains: searchText,
+            mode: 'insensitive',
+          },
+        },
+        {
+          contactPersonNumber: {
+            contains: searchText,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+
+    if (status) {
+      where.status = status;
+    }
 
     const companies = await this.prisma.company.findMany({
       skip,
