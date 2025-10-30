@@ -9,11 +9,12 @@ import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { AttendanceRepository } from './attendance.repository';
 import { EmployeeRepository } from 'src/employee/employee.repository';
 import { BulkMarkAttendanceDto } from './dto/bulk-mark-attendance.dto';
-import { Attendance } from '@prisma/client';
+import { Attendance, Status } from '@prisma/client';
 import { CompanyRepository } from 'src/company/company.repository';
 import { UploadAttendanceSheetDto } from './dto/upload-attendance-sheet.dto';
 import { AwsS3Service } from 'src/aws/aws-s3.service';
 import { IResponse } from 'src/types/response.interface';
+import { GetActiveEmployeesDto } from './dto/get-active-employees.dto';
 
 @Injectable()
 export class AttendanceService {
@@ -45,6 +46,14 @@ export class AttendanceService {
           `Company with ID ${markAttendanceDto.companyId} not found.`,
         );
       }
+
+      // Validate employee was active in the company during the attendance month
+      await this.validateEmployeeEmploymentForMonth(
+        markAttendanceDto.employeeId,
+        markAttendanceDto.companyId,
+        markAttendanceDto.month,
+      );
+
       const markAttendanceResponse =
         await this.attendanceRepository.markAttendance(markAttendanceDto);
       if (!markAttendanceResponse) {
@@ -77,8 +86,31 @@ export class AttendanceService {
         throw new NotFoundException('Some employee records not found.');
       }
 
+      // Validate all employee-company-month combinations
+      const validationErrors: string[] = [];
+      for (const record of records) {
+        try {
+          await this.validateEmployeeEmploymentForMonth(
+            record.employeeId,
+            record.companyId,
+            record.month,
+          );
+        } catch (error) {
+          validationErrors.push(
+            `Employee ${record.employeeId} for month ${record.month}: ${error.message}`,
+          );
+        }
+      }
+
+      if (validationErrors.length > 0) {
+        throw new BadRequestException(
+          `Validation failed for some records:\n${validationErrors.join('\n')}`,
+        );
+      }
+
       // Use batch operation for better performance
-      const attendanceRecords = await this.attendanceRepository.bulkMarkAttendance(records);
+      const attendanceRecords =
+        await this.attendanceRepository.bulkMarkAttendance(records);
 
       return {
         statusCode: HttpStatus.OK,
@@ -267,6 +299,116 @@ export class AttendanceService {
     } catch (error) {
       this.logger.error(`Error deleting attendance records`);
       throw error;
+    }
+  }
+
+  /**
+   * Get active employees for a specific company and month
+   * Returns employees who were active (employed) during the given month
+   */
+  async getActiveEmployeesForMonth(
+    getActiveEmployeesDto: GetActiveEmployeesDto,
+  ): Promise<IResponse<any>> {
+    try {
+      const { companyId, month } = getActiveEmployeesDto;
+
+      // Validate company exists
+      const company = await this.companyRepository.findById(companyId);
+      if (!company) {
+        throw new NotFoundException(
+          `Company with ID ${companyId} not found.`,
+        );
+      }
+
+      // Get active employees for the month
+      const activeEmployees =
+        await this.employeeRepository.getActiveEmployeesForMonth(
+          companyId,
+          month,
+        );
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: `Active employees for ${month} retrieved successfully`,
+        data: {
+          companyId,
+          companyName: company.name,
+          month,
+          employees: activeEmployees,
+          count: activeEmployees.length,
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error retrieving active employees for month`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Validates that an employee was active (employed) in the company during the given month
+   * @throws BadRequestException if validation fails
+   */
+  private async validateEmployeeEmploymentForMonth(
+    employeeId: string,
+    companyId: string,
+    month: string, // Format: YYYY-MM
+  ): Promise<void> {
+    // Parse the month to get first and last day
+    const [year, monthNum] = month.split('-').map(Number);
+    const monthStart = new Date(year, monthNum - 1, 1); // First day of month
+    const monthEnd = new Date(year, monthNum, 0); // Last day of month
+
+    // Get employment history for this employee and company
+    const employmentHistory =
+      await this.employeeRepository.getEmploymentHistoryForCompany(
+        employeeId,
+        companyId,
+      );
+
+    if (!employmentHistory || employmentHistory.length === 0) {
+      throw new BadRequestException(
+        `Employee ${employeeId} is not associated with company ${companyId}`,
+      );
+    }
+
+    // Check if any employment period overlaps with the attendance month
+    const isActiveInMonth = employmentHistory.some((employment) => {
+      // Parse joining date (assuming format DD-MM-YYYY)
+      const joiningDateParts = employment.joiningDate.split('-').map(Number);
+      const joiningDate = new Date(
+        joiningDateParts[2],
+        joiningDateParts[1] - 1,
+        joiningDateParts[0],
+      );
+
+      // Parse leaving date if it exists (assuming format DD-MM-YYYY)
+      let leavingDate: Date | null = null;
+      if (employment.leavingDate) {
+        const leavingDateParts = employment.leavingDate.split('-').map(Number);
+        leavingDate = new Date(
+          leavingDateParts[2],
+          leavingDateParts[1] - 1,
+          leavingDateParts[0],
+        );
+      }
+
+      // Employee must have joined before or during the month
+      const joinedBeforeOrDuringMonth = joiningDate <= monthEnd;
+
+      // Employee must not have left before the month started (or still be active)
+      const leftAfterMonthStarted =
+        !leavingDate || leavingDate >= monthStart;
+
+      return joinedBeforeOrDuringMonth && leftAfterMonthStarted;
+    });
+
+    if (!isActiveInMonth) {
+      throw new BadRequestException(
+        `Employee ${employeeId} was not active in company ${companyId} during month ${month}. Cannot mark attendance for months before joining date or after leaving date.`,
+      );
     }
   }
 }
