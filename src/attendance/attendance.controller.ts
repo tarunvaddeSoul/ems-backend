@@ -26,6 +26,7 @@ import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadAttendanceSheetDto } from './dto/upload-attendance-sheet.dto';
 import { GetAttendanceByCompanyAndMonthDto } from './dto/get-attendance.dto';
+import { GetActiveEmployeesDto } from './dto/get-active-employees.dto';
 import { Response } from 'express';
 
 @ApiTags('Attendance')
@@ -81,6 +82,28 @@ export class AttendanceController {
     const response = await this.attendanceService.uploadAttendanceSheet(
       uploadAttendanceSheetDto,
       attendanceSheet,
+    );
+    return res.status(response.statusCode).json(response);
+  }
+
+  @Get('active-employees')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get active employees for a company and month',
+    description: 'Returns employees who were active (employed) in the company during the specified month. Useful for bulk attendance marking.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Active employees retrieved successfully.',
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @ApiResponse({ status: 404, description: 'Company not found.' })
+  async getActiveEmployeesForMonth(
+    @Res() res: Response,
+    @Query() queryParams: GetActiveEmployeesDto,
+  ): Promise<Response> {
+    const response = await this.attendanceService.getActiveEmployeesForMonth(
+      queryParams,
     );
     return res.status(response.statusCode).json(response);
   }
