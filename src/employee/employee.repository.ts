@@ -296,6 +296,80 @@ export class EmployeeRepository {
     });
   }
 
+  async getEmploymentHistoryForCompany(
+    employeeId: string,
+    companyId: string,
+  ): Promise<EmploymentHistory[]> {
+    return this.prisma.employmentHistory.findMany({
+      where: {
+        employeeId,
+        companyId,
+      },
+      orderBy: { joiningDate: 'desc' },
+    });
+  }
+
+  async getActiveEmployeesForMonth(
+    companyId: string,
+    month: string, // Format: YYYY-MM
+  ): Promise<Employee[]> {
+    const [year, monthNum] = month.split('-').map(Number);
+    const monthStart = new Date(year, monthNum - 1, 1);
+    const monthEnd = new Date(year, monthNum, 0);
+
+    // Find all employment histories for this company
+    const employmentHistories = await this.prisma.employmentHistory.findMany({
+      where: { companyId },
+      include: {
+        employee: {
+          include: {
+            contactDetails: true,
+            employmentHistories: {
+              where: { companyId },
+              orderBy: { joiningDate: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    // Filter employees who were active during the month
+    const activeEmployees = employmentHistories
+      .filter((history) => {
+        const joiningDateParts = history.joiningDate.split('-').map(Number);
+        const joiningDate = new Date(
+          joiningDateParts[2],
+          joiningDateParts[1] - 1,
+          joiningDateParts[0],
+        );
+
+        let leavingDate: Date | null = null;
+        if (history.leavingDate) {
+          const leavingDateParts = history.leavingDate.split('-').map(Number);
+          leavingDate = new Date(
+            leavingDateParts[2],
+            leavingDateParts[1] - 1,
+            leavingDateParts[0],
+          );
+        }
+
+        // Joined before or during month, and hasn't left before month started
+        const joinedBeforeOrDuringMonth = joiningDate <= monthEnd;
+        const leftAfterMonthStarted = !leavingDate || leavingDate >= monthStart;
+
+        return joinedBeforeOrDuringMonth && leftAfterMonthStarted;
+      })
+      .map((history) => history.employee);
+
+    // Remove duplicates (employee might have multiple employment records)
+    const uniqueEmployees = Array.from(
+      new Map(activeEmployees.map((emp) => [emp.id, emp])).values(),
+    );
+
+    return uniqueEmployees;
+  }
+
   async getCurrentEmploymentHistory(
     employeeId: string,
   ): Promise<EmploymentHistory | null> {
