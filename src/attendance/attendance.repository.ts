@@ -175,6 +175,17 @@ export class AttendanceRepository {
     }
   }
 
+  async updateAttendance(id: string, presentCount: number) {
+    try {
+      return await this.prisma.attendance.update({
+        where: { id },
+        data: { presentCount },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async getAllAttendanceRecordsByCompanyIdAndMonth(
     companyId: string,
     month: string,
@@ -249,6 +260,76 @@ export class AttendanceRepository {
           'Unknown Department',
         presentCount: record.presentCount,
         attendanceSheetUrl: attendanceSheet?.attendanceSheetUrl ?? null,
+      }));
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getAttendanceSheetByCompanyAndMonth(companyId: string, month: string) {
+    try {
+      return await this.prisma.attendanceSheet.findUnique({
+        where: { companyId_month: { companyId, month } },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+  async getAttendanceSheetById(id: string) {
+    try {
+      return await this.prisma.attendanceSheet.findUnique({ where: { id } });
+    } catch (error) {
+      throw error;
+    }
+  }
+  async deleteAttendanceSheetById(id: string) {
+    try {
+      return await this.prisma.attendanceSheet.delete({ where: { id } });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getAttendanceByFilters(filters: { companyId?: string; employeeId?: string; month?: string }) {
+    try {
+      const { companyId, employeeId, month } = filters;
+      const where: any = {};
+      if (companyId) where.companyId = companyId;
+      if (employeeId) where.employeeId = employeeId;
+      if (month) where.month = month;
+
+      const attendanceRecords = await this.prisma.attendance.findMany({
+        where,
+        include: {
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              employmentHistories: {
+                where: companyId ? { companyId } : undefined,
+                orderBy: { joiningDate: 'desc' },
+                take: 1,
+                select: {
+                  designation: { select: { name: true } },
+                  department: { select: { name: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return attendanceRecords.map((rec) => ({
+        id: rec.id,
+        employeeId: rec.employeeId,
+        companyId: rec.companyId,
+        month: rec.month,
+        presentCount: rec.presentCount,
+        employeeName: `${rec.employee.firstName} ${rec.employee.lastName}`.trim(),
+        employeeID: rec.employee.id,
+        departmentName: rec.employee.employmentHistories[0]?.department?.name || null,
+        designationName: rec.employee.employmentHistories[0]?.designation?.name || null,
       }));
     } catch (error) {
       throw error;
