@@ -1,4 +1,4 @@
 export const jwt_config = {
-  secret: 'abcdefghij',
-  expired: 3600,
+  secret: process.env.JWT_SECRET,
+  expired: process.env.JWT_EXPIRY,
 };
