@@ -18,6 +18,7 @@ import { GetActiveEmployeesDto } from './dto/get-active-employees.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AttendanceReportResponseDto } from './dto/attendance-report-response.dto';
 import { ListAttendanceQueryDto } from './dto/list-attendance-query.dto';
+import { ListAttendanceSheetsDto } from './dto/list-attendance-sheets.dto';
 
 @Injectable()
 export class AttendanceService {
@@ -478,6 +479,65 @@ export class AttendanceService {
       };
     } catch (error) {
       this.logger.error(`Error fetching attendance sheet by company and month`);
+      throw error;
+    }
+  }
+
+  async listAttendanceSheets(query: ListAttendanceSheetsDto): Promise<IResponse<any>> {
+    try {
+      // Validation: month cannot be used with startMonth/endMonth
+      if (query.month && (query.startMonth || query.endMonth)) {
+        throw new BadRequestException('month cannot be used with startMonth or endMonth');
+      }
+
+      // Validation: startMonth must be <= endMonth
+      if (query.startMonth && query.endMonth) {
+        if (query.startMonth > query.endMonth) {
+          throw new BadRequestException('startMonth must be less than or equal to endMonth');
+        }
+      }
+
+      // If both companyId and month are provided, return single record (backward compatibility)
+      if (query.companyId && query.month) {
+        const sheet = await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(
+          query.companyId,
+          query.month,
+        );
+        if (!sheet) {
+          return {
+            statusCode: HttpStatus.OK,
+            message: 'No sheet found',
+            data: null,
+          };
+        }
+
+        // Get company name
+        const company = await this.companyRepository.findById(query.companyId);
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'OK',
+          data: {
+            id: sheet.id,
+            companyId: sheet.companyId,
+            companyName: company?.name || 'Unknown',
+            month: sheet.month,
+            attendanceSheetUrl: sheet.attendanceSheetUrl,
+          },
+        };
+      }
+
+      // Otherwise, use list endpoint with pagination
+      const result = await this.attendanceRepository.listAttendanceSheets(query);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Attendance sheets retrieved successfully',
+        data: {
+          data: result.data,
+          pagination: result.pagination,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error listing attendance sheets`, error.stack);
       throw error;
     }
   }
