@@ -33,6 +33,8 @@ import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AttendanceSheetResponseDto } from './dto/attendance-sheet-response.dto';
 import { AttendanceReportResponseDto } from './dto/attendance-report-response.dto';
 import { ListAttendanceQueryDto } from './dto/list-attendance-query.dto';
+import { ListAttendanceSheetsDto } from './dto/list-attendance-sheets.dto';
+import { AttendanceSheetListResponseDto } from './dto/attendance-sheet-list-response.dto';
 
 @ApiTags('Attendance')
 @UseInterceptors(TransformInterceptor)
@@ -165,15 +167,21 @@ export class AttendanceController {
 
   @Get('/attendance-sheets')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get attendance sheet entry by companyId + month' })
-  @ApiResponse({ status: 200, type: AttendanceSheetResponseDto, description: 'Sheet found' })
-  @ApiResponse({ status: 404, description: 'Sheet not found' })
+  @ApiOperation({
+    summary: 'List attendance sheets with filtering and pagination',
+    description: 'Fetch all attendance sheets with optional filtering by companyId, month, or month range. Supports pagination and sorting. When both companyId and month are provided, returns single record (backward compatible).',
+  })
+  @ApiResponse({
+    status: 200,
+    type: AttendanceSheetListResponseDto,
+    description: 'Attendance sheets retrieved successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request - validation error' })
   async getAttendanceSheet(
     @Res() res: Response,
-    @Query('companyId') companyId: string,
-    @Query('month') month: string
+    @Query() query: ListAttendanceSheetsDto,
   ): Promise<Response> {
-    const response = await this.attendanceService.getAttendanceSheetByCompanyAndMonth(companyId, month);
+    const response = await this.attendanceService.listAttendanceSheets(query);
     return res.status(response.statusCode).json(response);
   }
 
