@@ -15,6 +15,9 @@ import { UploadAttendanceSheetDto } from './dto/upload-attendance-sheet.dto';
 import { AwsS3Service } from 'src/aws/aws-s3.service';
 import { IResponse } from 'src/types/response.interface';
 import { GetActiveEmployeesDto } from './dto/get-active-employees.dto';
+import { UpdateAttendanceDto } from './dto/update-attendance.dto';
+import { AttendanceReportResponseDto } from './dto/attendance-report-response.dto';
+import { ListAttendanceQueryDto } from './dto/list-attendance-query.dto';
 
 @Injectable()
 export class AttendanceService {
@@ -54,6 +57,12 @@ export class AttendanceService {
         markAttendanceDto.month,
       );
 
+      // validate days range
+      const maxDays = this.getDaysInMonth(markAttendanceDto.month);
+      if (markAttendanceDto.presentCount < 0 || markAttendanceDto.presentCount > maxDays) {
+        throw new BadRequestException(`presentCount must be between 0 and ${maxDays} for ${markAttendanceDto.month}`);
+      }
+
       const markAttendanceResponse =
         await this.attendanceRepository.markAttendance(markAttendanceDto);
       if (!markAttendanceResponse) {
@@ -62,8 +71,8 @@ export class AttendanceService {
         );
       }
       return {
-        statusCode: HttpStatus.OK,
-        message: 'Marked attendance successfully',
+        statusCode: HttpStatus.CREATED,
+        message: 'Attendance marked',
         data: markAttendanceResponse,
       };
     } catch (error) {
@@ -108,14 +117,22 @@ export class AttendanceService {
         );
       }
 
+      // per-record daysInMonth validation
+      for (const r of records) {
+        const maxDays = this.getDaysInMonth(r.month);
+        if (r.presentCount < 0 || r.presentCount > maxDays) {
+          throw new BadRequestException(`Employee ${r.employeeId} month ${r.month}: presentCount must be between 0 and ${maxDays}`);
+        }
+      }
+
       // Use batch operation for better performance
       const attendanceRecords =
         await this.attendanceRepository.bulkMarkAttendance(records);
 
       return {
-        statusCode: HttpStatus.OK,
-        message: 'Marked attendance successfully',
-        data: attendanceRecords,
+        statusCode: HttpStatus.CREATED,
+        message: 'Bulk attendance processed',
+        data: attendanceRecords as any,
       };
     } catch (error) {
       this.logger.error(`Error marking attendance of employees`, error.stack);
@@ -133,19 +150,52 @@ export class AttendanceService {
       if (!company) {
         throw new NotFoundException(`Company with ID ${companyId} not found.`);
       }
+      if (!attendanceSheet) {
+        throw new BadRequestException('file is required');
+      }
+      const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+      const maxBytes = 10 * 1024 * 1024; // 10 MB
+      if (!allowed.includes(attendanceSheet.mimetype)) {
+        throw new BadRequestException('Unsupported file type');
+      }
+      if (attendanceSheet.size > maxBytes) {
+        throw new BadRequestException('File too large');
+      }
+
+      // Check for existing sheet and delete old file if exists
+      const existingSheet = await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(
+        companyId,
+        month,
+      );
+      if (existingSheet && existingSheet.attendanceSheetUrl) {
+        // Extract S3 key from URL and delete old file
+        const oldKey = this.extractS3KeyFromUrl(existingSheet.attendanceSheetUrl);
+        if (oldKey) {
+          try {
+            await this.awsS3Service.deleteFile(oldKey);
+          } catch (deleteError) {
+            this.logger.warn(`Failed to delete old file from S3: ${deleteError.message}`);
+            // Continue with upload even if deletion fails
+          }
+        }
+      }
+
+      // Upload new file
       const folder = `attendance-sheets/${company.name}`;
       const attendanceSheetUrl = await this.uploadFile(
         attendanceSheet,
         `${folder}/${month}`,
       );
+      
+      // Save/update database record
       const saveAttendanceSheetResponse =
         await this.attendanceRepository.saveAttendanceSheet(
           uploadAttendanceSheetDto,
           attendanceSheetUrl,
         );
       return {
-        statusCode: HttpStatus.OK,
-        message: 'Attendance sheet uploaded successfully',
+        statusCode: HttpStatus.CREATED,
+        message: 'Attendance sheet uploaded',
         data: saveAttendanceSheetResponse,
       };
     } catch (error) {
@@ -162,6 +212,40 @@ export class AttendanceService {
       return await this.awsS3Service.uploadFile(file, folderPath);
     }
     return null;
+  }
+
+  private extractS3KeyFromUrl(url: string): string | null {
+    try {
+      // Handle different S3 URL formats:
+      // https://bucket-name.s3.amazonaws.com/key/path
+      // https://bucket-name.s3.region.amazonaws.com/key/path
+      // https://s3.amazonaws.com/bucket-name/key/path
+      const urlObj = new URL(url);
+      
+      // Pattern 1: https://bucket.s3.amazonaws.com/key
+      if (urlObj.hostname.includes('.s3.amazonaws.com')) {
+        return urlObj.pathname.substring(1); // Remove leading '/'
+      }
+      
+      // Pattern 2: https://s3.amazonaws.com/bucket/key
+      if (urlObj.hostname === 's3.amazonaws.com') {
+        const parts = urlObj.pathname.split('/');
+        if (parts.length > 2) {
+          return parts.slice(2).join('/'); // Remove /bucket from path
+        }
+      }
+      
+      // Pattern 3: https://bucket.s3.region.amazonaws.com/key
+      if (urlObj.hostname.includes('.s3.') && urlObj.hostname.includes('.amazonaws.com')) {
+        return urlObj.pathname.substring(1);
+      }
+      
+      // If URL format doesn't match, try to extract from pathname
+      return urlObj.pathname.substring(1) || null;
+    } catch (error) {
+      this.logger.warn(`Failed to extract S3 key from URL: ${url}`);
+      return null;
+    }
   }
 
   async getAttendanceRecordsByCompanyId(
@@ -302,6 +386,33 @@ export class AttendanceService {
     }
   }
 
+  async updateAttendance(
+    id: string,
+    updateAttendanceDto: UpdateAttendanceDto,
+  ): Promise<IResponse<any>> {
+    try {
+      const attendance = await this.attendanceRepository.getAttendanceById(id);
+      if (!attendance) {
+        throw new NotFoundException(`Attendance record with ID ${id} not found.`);
+      }
+      if (typeof updateAttendanceDto.presentCount === 'number') {
+        const maxDays = this.getDaysInMonth(attendance.month);
+        if (updateAttendanceDto.presentCount < 0 || updateAttendanceDto.presentCount > maxDays) {
+          throw new BadRequestException(`presentCount must be between 0 and ${maxDays} for ${attendance.month}`);
+        }
+      }
+      const updated = await this.attendanceRepository.updateAttendance(id, attendance.presentCount);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Attendance updated',
+        data: updated,
+      };
+    } catch (error) {
+      this.logger.error(`Error updating attendance with ID: ${id}`);
+      throw error;
+    }
+  }
+
   /**
    * Get active employees for a specific company and month
    * Returns employees who were active (employed) during the given month
@@ -343,6 +454,125 @@ export class AttendanceService {
         `Error retrieving active employees for month`,
         error.stack,
       );
+      throw error;
+    }
+  }
+
+  async getAttendanceSheetByCompanyAndMonth(companyId: string, month: string): Promise<IResponse<any>> {
+    try {
+      if (!companyId || !month) {
+        throw new BadRequestException('companyId and month are required');
+      }
+      const sheet = await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(companyId, month);
+      if (!sheet) {
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'No sheet found',
+          data: null,
+        };
+      }
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'OK',
+        data: sheet,
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching attendance sheet by company and month`);
+      throw error;
+    }
+  }
+
+  async deleteAttendanceSheetById(id: string): Promise<IResponse<any>> {
+    try {
+      // find the sheet and delete the file from S3
+      const sheet = await this.attendanceRepository.getAttendanceSheetById(id);
+      if (!sheet) {
+        throw new NotFoundException(`Attendance sheet not found`);
+      }
+      // delete file from storage if url present
+      if (sheet.attendanceSheetUrl) {
+        await this.awsS3Service.deleteFile(sheet.attendanceSheetUrl);
+      }
+      await this.attendanceRepository.deleteAttendanceSheetById(id);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Attendance sheet deleted',
+        data: null,
+      };
+    } catch (error) {
+      this.logger.error(`Error deleting attendance sheet: ${id}`);
+      throw error;
+    }
+  }
+
+  async getAttendanceReport(companyId: string, month: string): Promise<IResponse<AttendanceReportResponseDto | null>> {
+    try {
+      if (!companyId || !month) {
+        throw new BadRequestException('companyId and month are required');
+      }
+      // Fetch company
+      const company = await this.companyRepository.findById(companyId);
+      if (!company) {
+        throw new NotFoundException('Company not found');
+      }
+      // Fetch attendance records for company+month
+      const attendanceRecords = await this.attendanceRepository.getAllAttendanceRecordsByCompanyIdAndMonth(companyId, month);
+      // Pull minimal info for report (normalize for DTO)
+      const records = (attendanceRecords || []).map((row: any) => ({
+        employeeId: row.employeeID,
+        employeeName: row.employeeName,
+        employeeID: row.employeeID, // Map as per API sample
+        departmentName: row.departmentName,
+        designationName: row.designationName,
+        presentCount: row.presentCount, // Already validated
+      }));
+      // Compute stats
+      const totalEmployees = records.length;
+      const totalPresent = records.reduce((sum, r) => sum + (r.presentCount || 0), 0);
+      const averageAttendance = totalEmployees ? totalPresent / totalEmployees : 0;
+      const presentCountsArr = records.map((r) => r.presentCount);
+      const minPresent = presentCountsArr.length ? Math.min(...presentCountsArr) : 0;
+      const maxPresent = presentCountsArr.length ? Math.max(...presentCountsArr) : 0;
+      // Get attendanceSheet
+      const attendanceSheetObj = await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(companyId, month);
+      const attendanceSheet = attendanceSheetObj
+        ? { id: attendanceSheetObj.id, attendanceSheetUrl: attendanceSheetObj.attendanceSheetUrl }
+        : null;
+      // Company minimal DTO
+      const companyReport = {
+        id: company.id,
+        name: company.name,
+        address: company.address,
+      };
+      const report: AttendanceReportResponseDto = {
+        company: companyReport,
+        month,
+        totals: { totalEmployees, totalPresent, averageAttendance, minPresent, maxPresent },
+        records,
+        attendanceSheet,
+      };
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'OK',
+        data: report,
+      };
+    } catch (error) {
+      this.logger.error('Error generating attendance report', error.stack);
+      throw error;
+    }
+  }
+
+  async getAttendanceReportPdf(companyId: string, month: string, res: any): Promise<any> {
+    // Stub for now: send JSON error or placeholder.
+    return res.status(400).json({ statusCode: 400, message: 'Invalid request', data: null });
+  }
+
+  async getByFilters(query: ListAttendanceQueryDto): Promise<IResponse<any>> {
+    try {
+      const data = await this.attendanceRepository.getAttendanceByFilters(query);
+      return { statusCode: HttpStatus.OK, message: 'OK', data };
+    } catch (error) {
+      this.logger.error('Error retrieving attendance by filters', error.stack);
       throw error;
     }
   }
@@ -410,5 +640,11 @@ export class AttendanceService {
         `Employee ${employeeId} was not active in company ${companyId} during month ${month}. Cannot mark attendance for months before joining date or after leaving date.`,
       );
     }
+  }
+
+  private getDaysInMonth(month: string): number {
+    const [y, m] = month.split('-').map(Number);
+    if (!y || !m) return 31;
+    return new Date(y, m, 0).getDate();
   }
 }
