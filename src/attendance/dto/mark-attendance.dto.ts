@@ -5,7 +5,7 @@ import {
   IsString,
   Matches,
   IsInt,
-  IsPositive,
+  Min,
 } from 'class-validator';
 
 export class MarkAttendanceDto {
@@ -43,12 +43,13 @@ export class MarkAttendanceDto {
 
   @ApiProperty({
     type: 'number',
-    description: 'Present Count',
+    description: 'Present Count (must be >= 0)',
     example: '30',
     required: true,
+    minimum: 0,
   })
   @IsInt()
-  @IsPositive()
+  @Min(0)
   @Type(() => Number)
   @IsNotEmpty()
   presentCount: number;
