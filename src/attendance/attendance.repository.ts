@@ -335,4 +335,109 @@ export class AttendanceRepository {
       throw error;
     }
   }
+
+  async listAttendanceSheets(filters: {
+    companyId?: string;
+    month?: string;
+    startMonth?: string;
+    endMonth?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }) {
+    try {
+      const {
+        companyId,
+        month,
+        startMonth,
+        endMonth,
+        page = 1,
+        limit = 20,
+        sortBy = 'month',
+        sortOrder = 'desc',
+      } = filters;
+
+      // Build where clause
+      const where: any = {};
+      if (companyId) {
+        where.companyId = companyId;
+      }
+
+      // Handle month filtering
+      if (month) {
+        where.month = month;
+      } else if (startMonth || endMonth) {
+        // Month range filtering (month is stored as string YYYY-MM, so string comparison works)
+        if (startMonth && endMonth) {
+          where.month = {
+            gte: startMonth,
+            lte: endMonth,
+          };
+        } else if (startMonth) {
+          where.month = {
+            gte: startMonth,
+          };
+        } else if (endMonth) {
+          where.month = {
+            lte: endMonth,
+          };
+        }
+      }
+
+      // Calculate pagination
+      const skip = (page - 1) * limit;
+
+      // Build orderBy
+      const orderBy: any = {};
+      if (sortBy === 'month') {
+        orderBy.month = sortOrder;
+      } else if (sortBy === 'companyId') {
+        orderBy.companyId = sortOrder;
+      } else {
+        // Default to month if invalid sortBy
+        orderBy.month = sortOrder;
+      }
+
+      // Get total count
+      const total = await this.prisma.attendanceSheet.count({ where });
+
+      // Get paginated results
+      const sheets = await this.prisma.attendanceSheet.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+      });
+
+      // Get company names for all unique companyIds
+      const companyIds = [...new Set(sheets.map((s) => s.companyId))];
+      const companies = await this.prisma.company.findMany({
+        where: { id: { in: companyIds } },
+        select: { id: true, name: true },
+      });
+
+      const companyMap = new Map(
+        companies.map((c) => [c.id, c.name]),
+      );
+
+      return {
+        data: sheets.map((sheet) => ({
+          id: sheet.id,
+          companyId: sheet.companyId,
+          companyName: companyMap.get(sheet.companyId) || 'Unknown',
+          month: sheet.month,
+          attendanceSheetUrl: sheet.attendanceSheetUrl,
+        })),
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
 }
