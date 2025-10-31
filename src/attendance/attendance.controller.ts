@@ -20,6 +20,11 @@ import {
   ApiOperation,
   ApiResponse,
   ApiTags,
+  ApiParam,
+  ApiQuery,
+  ApiBody,
+  ApiExtraModels,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import { DeleteAttendanceDto } from './dto/delete-attendance.dto';
 import { BulkMarkAttendanceDto } from './dto/bulk-mark-attendance.dto';
@@ -35,6 +40,8 @@ import { AttendanceReportResponseDto } from './dto/attendance-report-response.dt
 import { ListAttendanceQueryDto } from './dto/list-attendance-query.dto';
 import { ListAttendanceSheetsDto } from './dto/list-attendance-sheets.dto';
 import { AttendanceSheetListResponseDto } from './dto/attendance-sheet-list-response.dto';
+import { AttendanceResponseDto, AttendanceListResponseDto } from './dto/attendance-response.dto';
+import { ApiResponseWrapperDto, ApiErrorResponseDto } from './dto/api-response-wrapper.dto';
 
 @ApiTags('Attendance')
 @UseInterceptors(TransformInterceptor)
@@ -44,9 +51,46 @@ export class AttendanceController {
 
   @Post('mark')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Mark attendance for an employee' })
-  @ApiResponse({ status: 201, description: 'Attendance marked' })
-  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @ApiOperation({
+    summary: 'Mark attendance for an employee',
+    description: 'Creates or updates attendance record for an employee in a specific company and month. Validates that the employee was active during the specified month.',
+  })
+  @ApiBody({ type: MarkAttendanceDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Attendance marked successfully',
+    type: ApiResponseWrapperDto,
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'Attendance marked',
+        data: {
+          id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          employeeId: 'TSS9934',
+          companyId: '3bbd6f5e-663b-4a00-b756-fcd2f4c08a79',
+          month: '2025-10',
+          presentCount: 22,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Validation error or business rule violation',
+    type: ApiErrorResponseDto,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'presentCount must be between 0 and 31 for 2025-10',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Employee or Company not found',
+    type: ApiErrorResponseDto,
+  })
   async markAttendance(
     @Res() res: Response,
     @Body() markAttendanceDto: MarkAttendanceDto,
@@ -61,9 +105,39 @@ export class AttendanceController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Bulk Mark Attendance',
-    description: 'Mark attendance for multiple employees',
+    description: 'Mark attendance for multiple employees in a single request. All records are processed atomically - either all succeed or all fail. Validates employment status for each employee.',
   })
-  @ApiResponse({ status: 201, description: 'Bulk attendance processed' })
+  @ApiBody({ type: BulkMarkAttendanceDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Bulk attendance processed successfully',
+    type: ApiResponseWrapperDto,
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'Bulk attendance processed',
+        data: [
+          {
+            id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+            employeeId: 'TSS1001',
+            companyId: '3bbd6f5e-663b-4a00-b756-fcd2f4c08a79',
+            month: '2025-10',
+            presentCount: 22,
+          },
+        ],
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation error - Check message for details',
+    type: ApiErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Some employee records not found',
+    type: ApiErrorResponseDto,
+  })
   async bulkMarkAttendance(
     @Res() res: Response,
     @Body() bulkMarkAttendanceDto: BulkMarkAttendanceDto,
@@ -200,10 +274,39 @@ export class AttendanceController {
 
   @Get('/reports')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Attendance monthly report dataset (JSON for UI/PDF)', description: 'Aggregated dataset for company+month, includes totals and all rows.' })
-  @ApiResponse({ status: 200, type: AttendanceReportResponseDto })
-  @ApiResponse({ status: 400, description: 'Invalid request' })
-  @ApiResponse({ status: 404, description: 'Company or records not found' })
+  @ApiOperation({
+    summary: 'Attendance monthly report dataset (JSON for UI/PDF)',
+    description: 'Get aggregated attendance report data for a company and month. Includes company info, totals (employees, present days, averages), all attendance records with employee details, and attendance sheet URL. Perfect for UI rendering or PDF generation.',
+  })
+  @ApiQuery({
+    name: 'companyId',
+    description: 'Company ID (UUID format)',
+    example: '3bbd6f5e-663b-4a00-b756-fcd2f4c08a79',
+    required: true,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'month',
+    description: 'Month in YYYY-MM format (e.g., 2025-10)',
+    example: '2025-10',
+    required: true,
+    type: String,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Report data retrieved successfully',
+    type: AttendanceReportResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request - missing or invalid parameters',
+    type: ApiErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company or records not found',
+    type: ApiErrorResponseDto,
+  })
   async getAttendanceReport(
     @Res() res: Response,
     @Query('companyId') companyId: string,
@@ -274,10 +377,52 @@ export class AttendanceController {
 
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update presentCount for attendance record' })
-  @ApiResponse({ status: 200, description: 'Attendance updated' })
-  @ApiResponse({ status: 400, description: 'Bad Request' })
-  @ApiResponse({ status: 404, description: 'Attendance record not found' })
+  @ApiOperation({
+    summary: 'Update presentCount for attendance record',
+    description: 'Update the presentCount (number of days present) for an existing attendance record. Validates that the new count is within valid range for the month.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Attendance record ID (UUID)',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    type: 'string',
+  })
+  @ApiBody({ type: UpdateAttendanceDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Attendance updated successfully',
+    type: ApiResponseWrapperDto,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Attendance updated',
+        data: {
+          id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          employeeId: 'TSS1001',
+          companyId: '3bbd6f5e-663b-4a00-b756-fcd2f4c08a79',
+          month: '2025-10',
+          presentCount: 18,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Validation error',
+    type: ApiErrorResponseDto,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'presentCount must be between 0 and 31 for 2025-10',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Attendance record not found',
+    type: ApiErrorResponseDto,
+  })
   async updateAttendance(
     @Res() res: Response,
     @Param('id') id: string,

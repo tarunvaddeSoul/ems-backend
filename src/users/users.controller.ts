@@ -19,6 +19,7 @@ import {
   ApiBody,
   ApiParam,
 } from '@nestjs/swagger';
+import { ApiResponseDto, ApiErrorResponseDto } from 'src/common/dto/api-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { AuthGuard } from 'src/users/auth.guard';
@@ -38,10 +39,38 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post('register')
-  @ApiOperation({ summary: 'Register a new user' })
+  @ApiOperation({
+    summary: 'Register a new user',
+    description: 'Creates a new user account with email, password, and user details. Returns user data and authentication tokens.',
+  })
   @ApiBody({ type: RegisterDto })
-  @ApiResponse({ status: 201, description: 'User registered successfully.' })
-  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @ApiResponse({
+    status: 201,
+    description: 'User registered successfully',
+    type: ApiResponseDto,
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'User registered successfully',
+        data: {
+          user: {
+            id: 'user-uuid',
+            name: 'John Doe',
+            email: 'john@example.com',
+            mobileNumber: '9876543210',
+            role: 'USER',
+          },
+          accessToken: 'jwt-access-token',
+          refreshToken: 'jwt-refresh-token',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Validation error or email already exists',
+    type: ApiErrorResponseDto,
+  })
   async register(
     @Res() res: Response,
     @Body() registerDto: RegisterDto,
@@ -51,10 +80,44 @@ export class UsersController {
   }
 
   @Post('login')
-  @ApiOperation({ summary: 'Login user' })
+  @ApiOperation({
+    summary: 'Login user',
+    description: 'Authenticates a user with email and password. Returns user data and JWT tokens (access and refresh).',
+  })
   @ApiBody({ type: LoginDto })
-  @ApiResponse({ status: 200, description: 'User logged in successfully.' })
-  @ApiResponse({ status: 401, description: 'Invalid credentials.' })
+  @ApiResponse({
+    status: 200,
+    description: 'User logged in successfully',
+    type: ApiResponseDto,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Login successful',
+        data: {
+          user: {
+            id: 'user-uuid',
+            name: 'John Doe',
+            email: 'john@example.com',
+            role: 'USER',
+          },
+          accessToken: 'jwt-access-token',
+          refreshToken: 'jwt-refresh-token',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid credentials',
+    type: ApiErrorResponseDto,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Invalid email or password',
+        error: 'Unauthorized',
+      },
+    },
+  })
   async login(
     @Res() res: Response,
     @Body() loginDto: LoginDto,
@@ -99,10 +162,36 @@ export class UsersController {
   }
 
   @Post('refresh-token/:refreshToken')
-  @ApiOperation({ summary: 'Refresh JWT token' })
-  @ApiParam({ name: 'refreshToken', type: String })
-  @ApiResponse({ status: 200, description: 'Token refreshed successfully.' })
-  @ApiResponse({ status: 401, description: 'Invalid refresh token.' })
+  @ApiOperation({
+    summary: 'Refresh JWT token',
+    description: 'Refreshes the access token using a valid refresh token. Returns new access and refresh tokens.',
+  })
+  @ApiParam({
+    name: 'refreshToken',
+    type: String,
+    description: 'Refresh token obtained from login',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Token refreshed successfully',
+    type: ApiResponseDto,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Token refreshed successfully',
+        data: {
+          accessToken: 'new-jwt-access-token',
+          refreshToken: 'new-jwt-refresh-token',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or expired refresh token',
+    type: ApiErrorResponseDto,
+  })
   async refreshToken(
     @Res() res: Response,
     @Param('refreshToken') refreshToken: string,

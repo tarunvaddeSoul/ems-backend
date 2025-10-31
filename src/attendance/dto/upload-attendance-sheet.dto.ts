@@ -18,12 +18,18 @@ export class UploadAttendanceSheetDto {
   })
   @ApiProperty({
     type: 'string',
-    description: 'Date of attendance in the format YYYY-MM',
-    example: '2024-06',
+    description: 'Month in YYYY-MM format',
+    example: '2025-10',
     required: true,
+    pattern: '^\\d{4}-\\d{2}$',
   })
   month: string;
 
-  @ApiProperty({ type: 'string', format: 'binary', required: true })
-  attendanceSheet: Express.Multer.File;
+  @ApiProperty({
+    type: 'string',
+    format: 'binary',
+    description: 'Attendance sheet file (PDF, PNG, JPG, JPEG - max 10MB)',
+    required: true,
+  })
+  file: Express.Multer.File;
 }
