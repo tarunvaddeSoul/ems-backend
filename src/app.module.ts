@@ -8,6 +8,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { DepartmentModule } from './departments/department.module';
 import { DesignationModule } from './designations/designation.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { SalaryRateScheduleModule } from './salary-rate-schedule/salary-rate-schedule.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     DepartmentModule,
     DesignationModule,
     DashboardModule,
+    SalaryRateScheduleModule,
   ],
 })
 export class AppModule {}
