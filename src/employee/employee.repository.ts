@@ -9,6 +9,12 @@ import {
   EmployeeReferenceDetails,
   EmploymentHistory,
   Prisma,
+  SalaryType,
+  SalaryCategory,
+  SalarySubCategory,
+  EmployeeSalaryHistory,
+  Gender,
+  Category,
 } from '@prisma/client';
 import { IEmployee } from './interface/employee.interface';
 import { GetAllEmployeesDto } from './dto/get-all-employees.dto';
@@ -18,7 +24,16 @@ import { Status } from './enum/employee.enum';
 export class EmployeeRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createEmployee(data: IEmployee): Promise<Employee> {
+  async createEmployee(
+    data: IEmployee,
+    salaryData?: {
+      salaryCategory?: SalaryCategory;
+      salarySubCategory?: SalarySubCategory;
+      salaryPerDay?: number;
+      monthlySalary?: number;
+      effectiveDate?: Date;
+    } | null,
+  ): Promise<Employee> {
     try {
       const result = await this.prisma.$transaction(async (prisma) => {
         // Create the main employee record
@@ -40,6 +55,14 @@ export class EmployeeRepository {
             recruitedBy: data.recruitedBy,
             age: data.age,
             highestEducationQualification: data.highestEducationQualification,
+            // Salary fields
+            salaryCategory: data.salaryCategory,
+            salarySubCategory: data.salarySubCategory,
+            salaryPerDay: data.salaryPerDay,
+            monthlySalary: data.monthlySalary,
+            pfEnabled: data.pfEnabled ?? false,
+            esicEnabled: data.esicEnabled ?? false,
+            salaryEffectiveDate: data.salaryEffectiveDate,
           },
         });
 
@@ -108,15 +131,56 @@ export class EmployeeRepository {
           },
         });
 
+        // Create EmployeeSalaryHistory entry if salary data is provided
+        if (salaryData && salaryData.salaryCategory) {
+          const salaryHistoryData: Prisma.EmployeeSalaryHistoryCreateInput = {
+            employee: {
+              connect: { id: employeeResponse.id },
+            },
+            salaryCategory: salaryData.salaryCategory,
+            effectiveFrom: salaryData.effectiveDate || new Date(),
+            ...(salaryData.salarySubCategory && {
+              salarySubCategory: salaryData.salarySubCategory,
+            }),
+            ...(salaryData.salaryPerDay && {
+              ratePerDay: salaryData.salaryPerDay,
+            }),
+            ...(salaryData.monthlySalary && {
+              monthlySalary: salaryData.monthlySalary,
+            }),
+          };
+
+          await prisma.employeeSalaryHistory.create({
+            data: salaryHistoryData,
+          });
+        }
+
         // If company information is provided, create an employment history entry
         if (data.currentCompanyId) {
+          // Calculate salary snapshot for employment history
+          let employmentSalary = data.currentCompanySalary;
+          let salaryType: SalaryType | null = null;
+
+          if (data.salaryCategory && data.salaryCategory !== 'SPECIALIZED') {
+            // For Central/State: convert per-day to monthly equivalent (assume 30 days)
+            if (data.salaryPerDay) {
+              employmentSalary = data.salaryPerDay * 30;
+              salaryType = SalaryType.PER_DAY;
+            }
+          } else if (data.monthlySalary) {
+            // For Specialized: use monthly salary directly
+            employmentSalary = data.monthlySalary;
+            salaryType = SalaryType.PER_MONTH;
+          }
+
           await prisma.employmentHistory.create({
             data: {
               employeeId: employeeResponse.id,
               companyId: data.currentCompanyId,
               designationId: data.currentCompanyDesignationId,
               departmentId: data.currentCompanyDepartmentId,
-              salary: data.currentCompanySalary,
+              salary: employmentSalary || 0,
+              salaryType: salaryType,
               joiningDate: data.currentCompanyJoiningDate,
               companyName: data.currentCompanyName,
               departmentName: data.currentCompanyEmployeeDepartmentName,
@@ -163,12 +227,15 @@ export class EmployeeRepository {
 
   async updateEmployeeContactDetails(
     employeeId: string,
-    data: any,
+    data: Prisma.EmployeeContactDetailsUpdateInput,
   ): Promise<EmployeeContactDetails> {
     return this.prisma.employeeContactDetails.upsert({
       where: { employeeId },
       update: data,
-      create: { ...data, employeeId },
+      create: {
+        ...(data as Prisma.EmployeeContactDetailsUncheckedCreateInput),
+        employeeId,
+      },
     });
   }
 
@@ -182,12 +249,15 @@ export class EmployeeRepository {
 
   async updateEmployeeBankDetails(
     employeeId: string,
-    data: any,
+    data: Prisma.EmployeeBankDetailsUpdateInput,
   ): Promise<EmployeeBankDetails> {
     return this.prisma.employeeBankDetails.upsert({
       where: { employeeId },
       update: data,
-      create: { ...data, employeeId },
+      create: {
+        ...(data as Prisma.EmployeeBankDetailsUncheckedCreateInput),
+        employeeId,
+      },
     });
   }
 
@@ -201,12 +271,15 @@ export class EmployeeRepository {
 
   async updateEmployeeAdditionalDetails(
     employeeId: string,
-    data: any,
+    data: Prisma.EmployeeAdditionalDetailsUpdateInput,
   ): Promise<EmployeeAdditionalDetails> {
     return this.prisma.employeeAdditionalDetails.upsert({
       where: { employeeId },
       update: data,
-      create: { ...data, employeeId },
+      create: {
+        ...(data as Prisma.EmployeeAdditionalDetailsUncheckedCreateInput),
+        employeeId,
+      },
     });
   }
 
@@ -220,12 +293,15 @@ export class EmployeeRepository {
 
   async updateEmployeeReferenceDetails(
     employeeId: string,
-    data: any,
+    data: Prisma.EmployeeReferenceDetailsUpdateInput,
   ): Promise<EmployeeReferenceDetails> {
     return this.prisma.employeeReferenceDetails.upsert({
       where: { employeeId },
       update: data,
-      create: { ...data, employeeId },
+      create: {
+        ...(data as Prisma.EmployeeReferenceDetailsUncheckedCreateInput),
+        employeeId,
+      },
     });
   }
 
@@ -401,7 +477,9 @@ export class EmployeeRepository {
     });
   }
 
-  async createEmploymentHistory(data: any): Promise<EmploymentHistory> {
+  async createEmploymentHistory(
+    data: Prisma.EmploymentHistoryCreateInput,
+  ): Promise<EmploymentHistory> {
     return await this.prisma.employmentHistory.create({ data });
   }
 
@@ -519,7 +597,7 @@ export class EmployeeRepository {
       endDate,
     } = params;
 
-    const where: any = {};
+    const where: Prisma.EmployeeWhereInput = {};
 
     if (searchText) {
       where.OR = [
@@ -528,8 +606,8 @@ export class EmployeeRepository {
         { id: { contains: searchText, mode: 'insensitive' } },
       ];
     }
-    if (gender && gender !== 'all') where.gender = gender;
-    if (category && category !== 'all') where.category = category;
+    if (gender && gender !== 'all') where.gender = gender as Gender;
+    if (category && category !== 'all') where.category = category as Category;
     if (status) where.status = status;
     if (highestEducationQualification)
       where.highestEducationQualification = highestEducationQualification;
@@ -567,7 +645,7 @@ export class EmployeeRepository {
       };
     }
 
-    const orderBy: any = {};
+    const orderBy: Prisma.EmployeeOrderByWithRelationInput = {};
     if (sortBy) {
       orderBy[sortBy] = sortOrder || 'asc';
     }
@@ -600,5 +678,34 @@ export class EmployeeRepository {
       where: { id },
     });
     return deleteEmployeeResponse;
+  }
+
+  /**
+   * Close the previous salary history entry by setting effectiveTo date
+   */
+  async closePreviousSalaryHistory(
+    employeeId: string,
+    effectiveDate: Date,
+  ): Promise<void> {
+    await this.prisma.employeeSalaryHistory.updateMany({
+      where: {
+        employeeId,
+        effectiveTo: null, // Only update entries that don't have an end date
+      },
+      data: {
+        effectiveTo: effectiveDate,
+      },
+    });
+  }
+
+  /**
+   * Create a new salary history entry
+   */
+  async createSalaryHistory(
+    data: Prisma.EmployeeSalaryHistoryCreateInput,
+  ): Promise<void> {
+    await this.prisma.employeeSalaryHistory.create({
+      data,
+    });
   }
 }
