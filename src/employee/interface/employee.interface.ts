@@ -1,4 +1,4 @@
-import { $Enums } from '@prisma/client';
+import { $Enums, SalaryCategory, SalarySubCategory } from '@prisma/client';
 import {
   Category,
   EducationQualification,
@@ -68,4 +68,12 @@ export interface IEmployee {
   otherDocumentRemarks?: string;
   salary?: number;
   aadhaarNumber?: string;
+  // New salary fields
+  salaryCategory?: SalaryCategory | $Enums.SalaryCategory;
+  salarySubCategory?: SalarySubCategory | $Enums.SalarySubCategory;
+  salaryPerDay?: number;
+  monthlySalary?: number;
+  pfEnabled?: boolean;
+  esicEnabled?: boolean;
+  salaryEffectiveDate?: Date;
 }
