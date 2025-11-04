@@ -1,5 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Attendance, SalaryRecord, SalaryTemplate } from '@prisma/client';
+import {
+  Attendance,
+  SalaryRecord,
+  SalaryTemplate,
+  EmployeeSalaryHistory,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -375,5 +381,69 @@ export class PayrollRepository {
       monthsWithData: distinctMonths.length,
       avgMonthlySalary: totalRecords > 0 ? totalSalary / totalRecords : 0,
     };
+  }
+
+  /**
+   * Get employee salary history entry for a specific month
+   * Returns the salary rate that was effective during the given month
+   */
+  async getEmployeeSalaryHistoryForMonth(
+    employeeId: string,
+    month: string, // Format: YYYY-MM
+  ): Promise<EmployeeSalaryHistory | null> {
+    // Parse month to get start and end dates
+    const [year, monthNum] = month.split('-').map(Number);
+    const monthStart = new Date(year, monthNum - 1, 1);
+    const monthEnd = new Date(year, monthNum, 0, 23, 59, 59, 999); // Last day of month
+
+    return this.prisma.employeeSalaryHistory.findFirst({
+      where: {
+        employeeId,
+        effectiveFrom: { lte: monthEnd },
+        OR: [
+          { effectiveTo: null },
+          { effectiveTo: { gte: monthStart } },
+        ],
+      },
+      orderBy: { effectiveFrom: 'desc' },
+    });
+  }
+
+  /**
+   * Get employee salary history entries for multiple employees and a specific month
+   */
+  async getEmployeeSalaryHistoryForMonthBatch(
+    employeeIds: string[],
+    month: string, // Format: YYYY-MM
+  ): Promise<Map<string, EmployeeSalaryHistory>> {
+    // Parse month to get start and end dates
+    const [year, monthNum] = month.split('-').map(Number);
+    const monthStart = new Date(year, monthNum - 1, 1);
+    const monthEnd = new Date(year, monthNum, 0, 23, 59, 59, 999); // Last day of month
+
+    const histories = await this.prisma.employeeSalaryHistory.findMany({
+      where: {
+        employeeId: { in: employeeIds },
+        effectiveFrom: { lte: monthEnd },
+        OR: [
+          { effectiveTo: null },
+          { effectiveTo: { gte: monthStart } },
+        ],
+      },
+      orderBy: [
+        { employeeId: 'asc' },
+        { effectiveFrom: 'desc' },
+      ],
+    });
+
+    // Create a map with employeeId as key, taking the most recent entry per employee
+    const historyMap = new Map<string, EmployeeSalaryHistory>();
+    histories.forEach((history) => {
+      if (!historyMap.has(history.employeeId)) {
+        historyMap.set(history.employeeId, history);
+      }
+    });
+
+    return historyMap;
   }
 }
