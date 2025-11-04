@@ -134,7 +134,7 @@ model SalaryRecord {
   companyId   String
   company     Company  @relation(fields: [companyId], references: [id])
   month       String
-  salaryData  Json 
+  salaryData  Json
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -175,8 +175,26 @@ enum Title {
   MS
 }
 
+enum SalaryCategory {
+  CENTRAL
+  STATE
+  SPECIALIZED
+}
+
+enum SalarySubCategory {
+  SKILLED
+  UNSKILLED
+  HIGHSKILLED
+  SEMISKILLED
+}
+
+enum SalaryType {
+  PER_DAY
+  PER_MONTH
+}
+
 model Employee {
-  id                            String   @id @default(dbgenerated("concat('TSS', lpad(floor(random() * 10000)::text, 4, '0'))"))
+  id                            String             @id @default(dbgenerated("concat('TSS', lpad(floor(random() * 10000)::text, 4, '0'))"))
   title                         Title
   firstName                     String
   lastName                      String
@@ -192,9 +210,17 @@ model Employee {
   status                        Status
   category                      Category
   recruitedBy                   String
-  age                           Int      @default(0)
-  createdAt                     DateTime @default(now())
-  updatedAt                     DateTime @updatedAt
+  age                           Int                @default(0)
+  // New salary fields
+  salaryCategory                SalaryCategory?
+  salarySubCategory             SalarySubCategory?
+  salaryPerDay                  Float?
+  monthlySalary                 Float?
+  pfEnabled                     Boolean            @default(false)
+  esicEnabled                   Boolean            @default(false)
+  salaryEffectiveDate           DateTime?
+  createdAt                     DateTime           @default(now())
+  updatedAt                     DateTime           @updatedAt
 
   // Relations with cascade delete
   contactDetails      EmployeeContactDetails?    @relation("EmployeeToContactDetails")
@@ -205,10 +231,12 @@ model Employee {
   employmentHistories EmploymentHistory[]
   salaryRecords       SalaryRecord[]
   attendances         Attendance[]
+  salaryHistory       EmployeeSalaryHistory[]
 
   @@index([status])
   @@index([firstName, lastName])
   @@index([status, createdAt])
+  @@index([salaryCategory, salarySubCategory])
 }
 
 model EmploymentHistory {
@@ -224,7 +252,8 @@ model EmploymentHistory {
   designation     Designation        @relation(fields: [designationId], references: [id])
   departmentId    String
   department      EmployeeDepartment @relation(fields: [departmentId], references: [id])
-  salary          Float
+  salary          Float // Historical snapshot - what employee earned during this employment
+  salaryType      SalaryType? // PER_DAY or PER_MONTH - indicates how salary was stored
   joiningDate     String
   leavingDate     String?
   status          String
@@ -337,4 +366,37 @@ model AttendanceSheet {
   attendanceSheetUrl String
 
   @@unique([companyId, month])
+}
+
+model SalaryRateSchedule {
+  id            String            @id @default(uuid())
+  category      SalaryCategory
+  subCategory   SalarySubCategory
+  ratePerDay    Float
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  isActive      Boolean           @default(true)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([category, subCategory, effectiveFrom])
+  @@index([isActive])
+  @@index([category, subCategory, isActive])
+}
+
+model EmployeeSalaryHistory {
+  id                String             @id @default(uuid())
+  employeeId        String
+  employee          Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  salaryCategory    SalaryCategory
+  salarySubCategory SalarySubCategory?
+  ratePerDay        Float? // For Central/State
+  monthlySalary     Float? // For Specialized
+  effectiveFrom     DateTime
+  effectiveTo       DateTime?
+  createdAt         DateTime           @default(now())
+
+  @@index([employeeId, effectiveFrom])
+  @@index([employeeId, effectiveFrom, effectiveTo])
+  @@index([employeeId])
 }
