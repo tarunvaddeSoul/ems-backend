@@ -224,7 +224,12 @@ export class SalaryRateScheduleService {
       }
 
       // Update the rate schedule
-      const updateData: any = {};
+      const updateData: {
+        ratePerDay?: number;
+        effectiveFrom?: Date;
+        effectiveTo?: Date | null;
+        isActive?: boolean;
+      } = {};
       if (updateDto.ratePerDay !== undefined) {
         updateData.ratePerDay = updateDto.ratePerDay;
       }
