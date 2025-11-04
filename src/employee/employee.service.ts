@@ -26,6 +26,10 @@ import {
   EmployeeReferenceDetails,
   EmploymentHistory,
   Status,
+  SalaryCategory,
+  SalarySubCategory,
+  SalaryType,
+  Prisma,
 } from '@prisma/client';
 import { IEmployee } from './interface/employee.interface';
 import { CompanyRepository } from 'src/company/company.repository';
@@ -37,6 +41,7 @@ import {
   UpdateEmploymentHistoryDto,
 } from './dto/employment-history.dto';
 import { IResponse } from 'src/types/response.interface';
+import { SalaryRateScheduleService } from 'src/salary-rate-schedule/salary-rate-schedule.service';
 
 @Injectable()
 export class EmployeeService {
@@ -47,6 +52,7 @@ export class EmployeeService {
     private readonly companyRepository: CompanyRepository,
     private readonly designationRepository: DesignationRepository,
     private readonly departmentRepository: DepartmentRepository,
+    private readonly salaryRateScheduleService: SalaryRateScheduleService,
   ) {}
 
   async createEmployee(
@@ -121,6 +127,9 @@ export class EmployeeService {
         `${folder}/otherDocument`,
       );
 
+      // Handle salary assignment
+      const salaryData = await this.assignSalaryData(data);
+
       const employeeData: IEmployee = {
         id: employeeId,
         title: data.title,
@@ -176,10 +185,19 @@ export class EmployeeService {
         otherDocument: otherDocumentUrl || '',
         otherDocumentRemarks: data.otherDocumentRemarks || '',
         aadhaarNumber: data.aadhaarNumber,
+        // Salary fields
+        salaryCategory: salaryData?.salaryCategory,
+        salarySubCategory: salaryData?.salarySubCategory,
+        salaryPerDay: salaryData?.salaryPerDay,
+        monthlySalary: salaryData?.monthlySalary,
+        pfEnabled: data.pfEnabled ?? false,
+        esicEnabled: data.esicEnabled ?? false,
+        salaryEffectiveDate: salaryData?.effectiveDate,
       };
 
       const employee = await this.employeeRepository.createEmployee(
         employeeData,
+        salaryData,
       );
       if (!employee) {
         throw new BadRequestException('Failed to create employee');
@@ -218,10 +236,66 @@ export class EmployeeService {
         updateEmployeeDto.age = newAge;
       }
 
+      // Check if salary-related fields are being updated
+      const salaryFieldsChanged =
+        updateEmployeeDto.salaryCategory !== undefined ||
+        updateEmployeeDto.salarySubCategory !== undefined ||
+        updateEmployeeDto.monthlySalary !== undefined;
+
+      // Update employee
       const updateResponse = await this.employeeRepository.updateEmployee(
         id,
         updateEmployeeDto,
       );
+
+      // If salary fields changed, create a new salary history entry
+      // Note: salaryPerDay is not directly updatable - it's derived from rate schedule
+      if (salaryFieldsChanged) {
+        const effectiveDate = new Date();
+        const updatedEmployee = await this.employeeRepository.getEmployeeById(
+          id,
+        );
+        if (!updatedEmployee) {
+          throw new NotFoundException(`Employee with ID: ${id} not found.`);
+        }
+
+        const newSalaryCategory =
+          updatedEmployee.salaryCategory ?? existingEmployee.salaryCategory;
+        const newSalarySubCategory =
+          updatedEmployee.salarySubCategory ??
+          existingEmployee.salarySubCategory;
+        const newSalaryPerDay = updatedEmployee.salaryPerDay;
+        const newMonthlySalary = updatedEmployee.monthlySalary;
+
+        // Close previous salary history entry if it exists
+        if (existingEmployee.salaryCategory) {
+          await this.employeeRepository.closePreviousSalaryHistory(
+            id,
+            effectiveDate,
+          );
+        }
+
+        // Create new salary history entry
+        if (newSalaryCategory) {
+          await this.employeeRepository.createSalaryHistory({
+            employee: {
+              connect: { id },
+            },
+            salaryCategory: newSalaryCategory,
+            salarySubCategory: newSalarySubCategory,
+            ratePerDay:
+              newSalaryCategory !== SalaryCategory.SPECIALIZED
+                ? newSalaryPerDay ?? null
+                : null,
+            monthlySalary:
+              newSalaryCategory === SalaryCategory.SPECIALIZED
+                ? newMonthlySalary ?? null
+                : null,
+            effectiveFrom: effectiveDate,
+          });
+        }
+      }
+
       return {
         statusCode: HttpStatus.OK,
         message: 'Employee updated successfully',
@@ -423,18 +497,58 @@ export class EmployeeService {
       );
     }
 
-    const saveEmploymentHistoryPayload = {
-      employeeId,
-      companyId,
-      designationId,
-      departmentId,
-      salary,
+    // Auto-populate salary from employee if not provided
+    let employmentSalary = salary;
+    let salaryType: SalaryType | null = null;
+
+    if (!employmentSalary && employeeId) {
+      const employee = await this.employeeRepository.getEmployeeById(employeeId);
+      if (employee) {
+        if (employee.salaryCategory && employee.salaryCategory !== SalaryCategory.SPECIALIZED) {
+          // For Central/State: convert per-day to monthly equivalent (assume 30 days)
+          if (employee.salaryPerDay) {
+            employmentSalary = employee.salaryPerDay * 30;
+            salaryType = SalaryType.PER_DAY;
+          }
+        } else if (employee.monthlySalary) {
+          // For Specialized: use monthly salary directly
+          employmentSalary = employee.monthlySalary;
+          salaryType = SalaryType.PER_MONTH;
+        }
+      }
+    } else if (employmentSalary) {
+      // If salary is provided manually, determine type from employee's category
+      const employee = await this.employeeRepository.getEmployeeById(employeeId);
+      if (employee) {
+        if (employee.salaryCategory && employee.salaryCategory !== SalaryCategory.SPECIALIZED) {
+          salaryType = SalaryType.PER_DAY;
+        } else {
+          salaryType = SalaryType.PER_MONTH;
+        }
+      }
+    }
+
+    const saveEmploymentHistoryPayload: Prisma.EmploymentHistoryCreateInput = {
+      employee: {
+        connect: { id: employeeId },
+      },
+      company: {
+        connect: { id: companyId },
+      },
+      designation: {
+        connect: { id: designationId },
+      },
+      department: {
+        connect: { id: departmentId },
+      },
+      salary: employmentSalary || 0,
+      salaryType,
       joiningDate,
-      leavingDate,
+      leavingDate: leavingDate || undefined,
       companyName: companyResponse.name,
-      departmentName: designationResponse.name,
+      departmentName: departmentResponse.name,
       designationName: designationResponse.name,
-      status: status,
+      status: status || Status.ACTIVE,
     };
 
     const saveResponse = await this.employeeRepository.createEmploymentHistory(
@@ -899,5 +1013,99 @@ export class EmployeeService {
       1000 + Math.random() * 9000,
     ).toString();
     return `TSS${random4DigitNumber}`;
+  }
+
+  /**
+   * Assign salary data based on category
+   * For Central/State: Lookup rate from SalaryRateSchedule
+   * For Specialized: Use monthlySalary from DTO
+   */
+  private async assignSalaryData(
+    data: CreateEmployeeDto,
+  ): Promise<{
+    salaryCategory?: SalaryCategory;
+    salarySubCategory?: SalarySubCategory;
+    salaryPerDay?: number;
+    monthlySalary?: number;
+    effectiveDate?: Date;
+  } | null> {
+    // If no salary category provided, return null (optional)
+    if (!data.salaryCategory) {
+      return null;
+    }
+
+    const effectiveDate = new Date();
+
+    // Parse employee onboarding date
+    let onboardingDate = effectiveDate;
+    if (data.employeeOnboardingDate) {
+      const parts = data.employeeOnboardingDate.split('-');
+      if (parts.length === 3) {
+        onboardingDate = new Date(
+          parseInt(parts[2]),
+          parseInt(parts[1]) - 1,
+          parseInt(parts[0]),
+        );
+      }
+    }
+
+    // For Central/State categories
+    if (
+      data.salaryCategory === SalaryCategory.CENTRAL ||
+      data.salaryCategory === SalaryCategory.STATE
+    ) {
+      if (!data.salarySubCategory) {
+        throw new BadRequestException(
+          `salarySubCategory is required for ${data.salaryCategory} category`,
+        );
+      }
+
+      // Lookup active rate from SalaryRateSchedule
+      const activeRate =
+        await this.salaryRateScheduleService.getActiveRate(
+          data.salaryCategory,
+          data.salarySubCategory,
+          onboardingDate,
+        );
+
+      if (!activeRate) {
+        throw new NotFoundException(
+          `No active salary rate schedule found for ${data.salaryCategory} - ${data.salarySubCategory} on ${data.employeeOnboardingDate}`,
+        );
+      }
+
+      return {
+        salaryCategory: data.salaryCategory,
+        salarySubCategory: data.salarySubCategory,
+        salaryPerDay: activeRate.ratePerDay,
+        monthlySalary: null,
+        effectiveDate: onboardingDate,
+      };
+    }
+
+    // For Specialized category
+    if (data.salaryCategory === SalaryCategory.SPECIALIZED) {
+      if (!data.monthlySalary) {
+        throw new BadRequestException(
+          'monthlySalary is required for SPECIALIZED category',
+        );
+      }
+
+      if (data.monthlySalary <= 0) {
+        throw new BadRequestException(
+          'monthlySalary must be greater than 0',
+        );
+      }
+
+      return {
+        salaryCategory: data.salaryCategory,
+        salarySubCategory: null,
+        salaryPerDay: null,
+        monthlySalary: data.monthlySalary,
+        effectiveDate: onboardingDate,
+      };
+    }
+
+    return null;
   }
 }
