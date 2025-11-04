@@ -28,10 +28,10 @@ export class CreateEmploymentHistoryDto {
   @IsUUID()
   departmentId: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsNumber()
-  salary: number;
+  salary?: number;
 
   @ApiProperty()
   @IsNotEmpty()
