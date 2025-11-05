@@ -7,7 +7,7 @@ import {
   Min,
   Max,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { SalaryCategory, SalarySubCategory } from '@prisma/client';
 
 export class GetSalaryRateScheduleDto {
@@ -34,8 +34,13 @@ export class GetSalaryRateScheduleDto {
     example: true,
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null) return undefined;
+    if (value === 'true' || value === true || value === 1 || value === '1') return true;
+    if (value === 'false' || value === false || value === 0 || value === '0') return false;
+    return value;
+  })
   @IsBoolean()
-  @Type(() => Boolean)
   isActive?: boolean;
 
   @ApiPropertyOptional({
