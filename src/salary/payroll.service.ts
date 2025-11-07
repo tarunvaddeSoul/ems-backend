@@ -629,7 +629,19 @@ export class PayrollService {
       monthlySalary = employee.monthlySalary ?? null;
     } else {
       // Fallback to employment history salary (legacy)
-      monthlySalary = currentEmployment.salary;
+      // Use salaryPerDay if available (for CENTRAL/STATE employees)
+      if (currentEmployment.salaryPerDay) {
+        salaryPerDay = currentEmployment.salaryPerDay;
+        // Determine category from salaryType if available
+        if (currentEmployment.salaryType === 'PER_DAY') {
+          // Try to infer category from employee's current employment
+          // For legacy employees, we'll use the salary as monthly equivalent
+          monthlySalary = currentEmployment.salary;
+        }
+      } else {
+        // For SPECIALIZED or legacy employees without salaryPerDay
+        monthlySalary = currentEmployment.salary;
+      }
     }
 
     // Calculate gross salary based on category
@@ -637,7 +649,13 @@ export class PayrollService {
     let wagesPerDay = 0;
     let basicPay = 0;
 
-    if (salaryCategory === SalaryCategory.CENTRAL || salaryCategory === SalaryCategory.STATE) {
+    // Handle CENTRAL/STATE category (explicit or inferred from salaryPerDay + salaryType)
+    const isCentralStateCategory =
+      salaryCategory === SalaryCategory.CENTRAL ||
+      salaryCategory === SalaryCategory.STATE ||
+      (salaryPerDay && salaryPerDay > 0 && currentEmployment.salaryType === 'PER_DAY');
+
+    if (isCentralStateCategory) {
       // For Central/State: per-day rate * present days
       if (salaryPerDay && salaryPerDay > 0) {
         wagesPerDay = salaryPerDay;
