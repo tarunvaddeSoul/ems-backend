@@ -1,4 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { SalaryType } from '@prisma/client';
 
 export class GetEmployeesResponseDto {
   @ApiProperty()
@@ -21,6 +22,17 @@ export class GetEmployeesResponseDto {
 
   @ApiProperty()
   salary: number;
+
+  @ApiPropertyOptional({
+    description: 'Per-day salary rate (for CENTRAL/STATE employees)',
+  })
+  salaryPerDay: number | null;
+
+  @ApiPropertyOptional({
+    enum: SalaryType,
+    description: 'Salary type (PER_DAY or PER_MONTH)',
+  })
+  salaryType: SalaryType | null;
 
   @ApiProperty()
   joiningDate: string;
