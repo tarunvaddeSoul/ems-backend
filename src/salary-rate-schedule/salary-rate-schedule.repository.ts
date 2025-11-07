@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   SalaryRateSchedule,
@@ -193,6 +193,29 @@ export class SalaryRateScheduleRepository {
   }
 
   /**
+   * Find rate that was effective on a specific date (including inactive/historical rates)
+   * This is useful for historical lookups regardless of current active status
+   */
+  async findRateForDate(
+    category: SalaryCategory,
+    subCategory: SalarySubCategory,
+    date: Date,
+  ): Promise<SalaryRateSchedule | null> {
+    return this.prisma.salaryRateSchedule.findFirst({
+      where: {
+        category,
+        subCategory,
+        effectiveFrom: { lte: date },
+        OR: [
+          { effectiveTo: null },
+          { effectiveTo: { gte: date } },
+        ],
+      },
+      orderBy: { effectiveFrom: 'desc' },
+    });
+  }
+
+  /**
    * Count total records
    */
   async count(params?: {
@@ -215,6 +238,140 @@ export class SalaryRateScheduleRepository {
     }
 
     return this.prisma.salaryRateSchedule.count({ where });
+  }
+
+  /**
+   * Create a new rate schedule with automatic closure of previous ongoing rates
+   * Uses a transaction to ensure atomicity and prevent race conditions
+   */
+  async createWithAutoClose(data: {
+    category: SalaryCategory;
+    subCategory: SalarySubCategory;
+    ratePerDay: number;
+    effectiveFrom: Date;
+    effectiveTo?: Date;
+    isActive?: boolean;
+  }): Promise<SalaryRateSchedule> {
+    return this.prisma.$transaction(async (prisma) => {
+      // Check for overlapping active rates within the transaction
+      const hasOverlap = await this.hasOverlappingActiveRateInTransaction(
+        prisma,
+        data.category,
+        data.subCategory,
+        data.effectiveFrom,
+        data.effectiveTo,
+      );
+
+      if (hasOverlap) {
+        // Find ongoing rate (effectiveTo = null) that starts before new rate
+        const existingRates = await prisma.salaryRateSchedule.findMany({
+          where: {
+            category: data.category,
+            subCategory: data.subCategory,
+            isActive: true,
+          },
+          orderBy: { effectiveFrom: 'desc' },
+        });
+
+        const ongoingRate = existingRates.find(
+          (rate) =>
+            rate.effectiveTo === null && rate.effectiveFrom < data.effectiveFrom,
+        );
+
+        if (ongoingRate) {
+          // Close the previous ongoing rate by setting effectiveTo to day before new rate
+          const dayBeforeNewRate = new Date(data.effectiveFrom);
+          dayBeforeNewRate.setDate(dayBeforeNewRate.getDate() - 1);
+          dayBeforeNewRate.setHours(23, 59, 59, 999);
+
+          await prisma.salaryRateSchedule.update({
+            where: { id: ongoingRate.id },
+            data: { effectiveTo: dayBeforeNewRate },
+          });
+        } else {
+          // There's still an overlap that couldn't be auto-resolved
+          throw new ConflictException(
+            `An active rate schedule already exists for ${data.category} - ${data.subCategory} that overlaps with the specified date range. ` +
+            `Please close the existing rate schedule first or adjust the date range.`,
+          );
+        }
+      }
+
+      // Create the new rate schedule
+      return prisma.salaryRateSchedule.create({
+        data,
+      });
+    });
+  }
+
+  /**
+   * Check for overlapping active rates within a transaction
+   * This uses the same logic as hasOverlappingActiveRate but operates within a transaction context
+   */
+  private async hasOverlappingActiveRateInTransaction(
+    prisma: Prisma.TransactionClient,
+    category: SalaryCategory,
+    subCategory: SalarySubCategory,
+    effectiveFrom: Date,
+    effectiveTo: Date | null,
+  ): Promise<boolean> {
+    const where: Prisma.SalaryRateScheduleWhereInput = {
+      category,
+      subCategory,
+      isActive: true,
+      OR: [
+        // New rate starts before existing rate ends
+        {
+          AND: [
+            { effectiveFrom: { lte: effectiveFrom } },
+            {
+              OR: [
+                { effectiveTo: null },
+                { effectiveTo: { gte: effectiveFrom } },
+              ],
+            },
+          ],
+        },
+        // New rate starts during existing rate
+        {
+          AND: [
+            { effectiveFrom: { gte: effectiveFrom } },
+            {
+              OR: [
+                { effectiveTo: null },
+                {
+                  AND: [
+                    { effectiveTo: { gte: effectiveFrom } },
+                    ...(effectiveTo
+                      ? [{ effectiveTo: { lte: effectiveTo } }]
+                      : []),
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        // New rate ends during existing rate
+        ...(effectiveTo
+          ? [
+              {
+                AND: [
+                  { effectiveFrom: { lte: effectiveTo } },
+                  {
+                    OR: [
+                      { effectiveTo: null },
+                      { effectiveTo: { gte: effectiveTo } },
+                    ],
+                  },
+                ],
+              },
+            ]
+          : []),
+      ],
+    };
+
+    const count = await prisma.salaryRateSchedule.count({ where });
+    return count > 0;
   }
 }
 
