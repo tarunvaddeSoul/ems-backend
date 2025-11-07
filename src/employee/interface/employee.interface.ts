@@ -75,5 +75,4 @@ export interface IEmployee {
   monthlySalary?: number;
   pfEnabled?: boolean;
   esicEnabled?: boolean;
-  salaryEffectiveDate?: Date;
 }
