@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Status } from '@prisma/client';
+import { Status, SalaryType } from '@prisma/client';
 import {
   IsNotEmpty,
   IsUUID,
@@ -28,7 +28,10 @@ export class CreateEmploymentHistoryDto {
   @IsUUID()
   departmentId: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: 'Salary snapshot (monthly equivalent). OPTIONAL - If not provided, will be auto-calculated from employee\'s current salary configuration. For CENTRAL/STATE: salaryPerDay * 30, For SPECIALIZED: monthlySalary. Only provide manually for special cases.',
+    example: 26790,
+  })
   @IsOptional()
   @IsNumber()
   salary?: number;
@@ -72,6 +75,19 @@ export class UpdateEmploymentHistoryDto {
   @IsNumber()
   salary?: number;
 
+  @ApiPropertyOptional({
+    description: 'Per-day salary rate (for CENTRAL/STATE employees). Auto-calculated when joining date changes.',
+  })
+  @IsOptional()
+  @IsNumber()
+  salaryPerDay?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateFormat({ message: 'joiningDate must be in the format DD-MM-YYYY' })
+  @IsString()
+  joiningDate?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateFormat({ message: 'leavingDate must be in the format DD-MM-YYYY' })
@@ -82,6 +98,14 @@ export class UpdateEmploymentHistoryDto {
   @IsOptional()
   @IsEnum(Status)
   status?: Status;
+
+  @ApiPropertyOptional({
+    enum: SalaryType,
+    description: 'Salary type (PER_DAY or PER_MONTH). Auto-set when salary is recalculated',
+  })
+  @IsOptional()
+  @IsEnum(SalaryType)
+  salaryType?: SalaryType;
 }
 
 export class LeavingDateDto {
