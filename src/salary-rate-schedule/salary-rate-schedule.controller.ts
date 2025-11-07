@@ -149,5 +149,88 @@ export class SalaryRateScheduleController {
       );
     return res.status(result.statusCode).json(result);
   }
+
+  @Get('rate-for-date/:category/:subCategory')
+  @ApiOperation({
+    summary: 'Get rate schedule that was effective on a specific date (includes historical rates)',
+  })
+  @ApiParam({ name: 'category', description: 'Salary category (CENTRAL, STATE)' })
+  @ApiParam({
+    name: 'subCategory',
+    description: 'Salary sub-category (SKILLED, UNSKILLED, HIGHSKILLED, SEMISKILLED)',
+  })
+  @ApiQuery({
+    name: 'date',
+    description: 'Date to check (ISO 8601 format, e.g., 2024-04-15)',
+    required: true,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Rate schedule for the specified date retrieved successfully.',
+  })
+  async getRateForDate(
+    @Param('category') category: string,
+    @Param('subCategory') subCategory: string,
+    @Query('date') dateString: string,
+    @Res() res: Response,
+  ) {
+    const { SalaryCategory, SalarySubCategory } = require('@prisma/client');
+
+    if (!Object.values(SalaryCategory).includes(category)) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: `Invalid category. Allowed values: ${Object.values(SalaryCategory).join(', ')}`,
+      });
+    }
+
+    if (!Object.values(SalarySubCategory).includes(subCategory)) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: `Invalid subCategory. Allowed values: ${Object.values(SalarySubCategory).join(', ')}`,
+      });
+    }
+
+    if (!dateString) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'Date parameter is required',
+      });
+    }
+
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({
+          statusCode: 400,
+          message: 'Invalid date format. Use ISO 8601 format (e.g., 2024-04-15)',
+        });
+      }
+
+      const rate = await this.salaryRateScheduleService.getRateForDate(
+        category as typeof SalaryCategory,
+        subCategory as typeof SalarySubCategory,
+        date,
+      );
+
+      if (!rate) {
+        return res.status(404).json({
+          statusCode: 404,
+          message: `No rate schedule found for ${category} - ${subCategory} on ${dateString}`,
+          data: null,
+        });
+      }
+
+      return res.status(200).json({
+        statusCode: 200,
+        message: 'Rate schedule retrieved successfully',
+        data: rate,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        statusCode: 500,
+        message: `Failed to retrieve rate schedule: ${error.message}`,
+      });
+    }
+  }
 }
 
