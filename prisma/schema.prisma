@@ -218,7 +218,6 @@ model Employee {
   monthlySalary                 Float?
   pfEnabled                     Boolean            @default(false)
   esicEnabled                   Boolean            @default(false)
-  salaryEffectiveDate           DateTime?
   createdAt                     DateTime           @default(now())
   updatedAt                     DateTime           @updatedAt
 
@@ -252,7 +251,8 @@ model EmploymentHistory {
   designation     Designation        @relation(fields: [designationId], references: [id])
   departmentId    String
   department      EmployeeDepartment @relation(fields: [departmentId], references: [id])
-  salary          Float // Historical snapshot - what employee earned during this employment
+  salary          Float // Historical snapshot - monthly equivalent (salaryPerDay * 30 for CENTRAL/STATE, monthlySalary for SPECIALIZED)
+  salaryPerDay    Float? // For CENTRAL/STATE: actual per-day rate (for display clarity)
   salaryType      SalaryType? // PER_DAY or PER_MONTH - indicates how salary was stored
   joiningDate     String
   leavingDate     String?
