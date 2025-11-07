@@ -62,7 +62,6 @@ export class EmployeeRepository {
             monthlySalary: data.monthlySalary,
             pfEnabled: data.pfEnabled ?? false,
             esicEnabled: data.esicEnabled ?? false,
-            salaryEffectiveDate: data.salaryEffectiveDate,
           },
         });
 
@@ -158,17 +157,33 @@ export class EmployeeRepository {
         // If company information is provided, create an employment history entry
         if (data.currentCompanyId) {
           // Calculate salary snapshot for employment history
+          // Priority: Use calculated salary from salaryData, fallback to manual currentCompanySalary
           let employmentSalary = data.currentCompanySalary;
           let salaryType: SalaryType | null = null;
 
-          if (data.salaryCategory && data.salaryCategory !== 'SPECIALIZED') {
-            // For Central/State: convert per-day to monthly equivalent (assume 30 days)
+          // Auto-calculate from salary configuration if available
+          if (salaryData) {
+            if (
+              salaryData.salaryCategory &&
+              salaryData.salaryCategory !== 'SPECIALIZED'
+            ) {
+              // For Central/State: convert per-day to monthly equivalent (assume 30 days)
+              if (salaryData.salaryPerDay) {
+                employmentSalary = salaryData.salaryPerDay * 30;
+                salaryType = SalaryType.PER_DAY;
+              }
+            } else if (salaryData.monthlySalary) {
+              // For Specialized: use monthly salary directly
+              employmentSalary = salaryData.monthlySalary;
+              salaryType = SalaryType.PER_MONTH;
+            }
+          } else if (data.salaryCategory && data.salaryCategory !== 'SPECIALIZED') {
+            // Fallback: Use data directly if salaryData not available
             if (data.salaryPerDay) {
               employmentSalary = data.salaryPerDay * 30;
               salaryType = SalaryType.PER_DAY;
             }
           } else if (data.monthlySalary) {
-            // For Specialized: use monthly salary directly
             employmentSalary = data.monthlySalary;
             salaryType = SalaryType.PER_MONTH;
           }
@@ -180,6 +195,12 @@ export class EmployeeRepository {
               designationId: data.currentCompanyDesignationId,
               departmentId: data.currentCompanyDepartmentId,
               salary: employmentSalary || 0,
+              salaryPerDay:
+                salaryType === SalaryType.PER_DAY && salaryData?.salaryPerDay
+                  ? salaryData.salaryPerDay
+                  : salaryType === SalaryType.PER_DAY && data.salaryPerDay
+                    ? data.salaryPerDay
+                    : null,
               salaryType: salaryType,
               joiningDate: data.currentCompanyJoiningDate,
               companyName: data.currentCompanyName,
