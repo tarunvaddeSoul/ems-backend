@@ -41,30 +41,25 @@ export class SalaryRateScheduleService {
         );
       }
 
-      // Check for overlapping active rates
-      const hasOverlap =
-        await this.salaryRateScheduleRepository.hasOverlappingActiveRate(
-          createDto.category,
-          createDto.subCategory,
-          effectiveFrom,
-          effectiveTo,
-        );
-
-      if (hasOverlap) {
-        throw new ConflictException(
-          `An active rate schedule already exists for ${createDto.category} - ${createDto.subCategory} that overlaps with the specified date range`,
+      // Validate rate is positive
+      if (createDto.ratePerDay <= 0) {
+        throw new BadRequestException(
+          'ratePerDay must be greater than 0',
         );
       }
 
-      // Create the rate schedule
-      const rateSchedule = await this.salaryRateScheduleRepository.create({
-        category: createDto.category,
-        subCategory: createDto.subCategory,
-        ratePerDay: createDto.ratePerDay,
-        effectiveFrom: effectiveFrom,
-        effectiveTo: effectiveTo || undefined,
-        isActive: createDto.isActive ?? true,
-      });
+      // Use transaction to ensure atomicity of update + create operations
+      // This prevents race conditions and ensures data consistency
+      const rateSchedule = await this.salaryRateScheduleRepository.createWithAutoClose(
+        {
+          category: createDto.category,
+          subCategory: createDto.subCategory,
+          ratePerDay: createDto.ratePerDay,
+          effectiveFrom: effectiveFrom,
+          effectiveTo: effectiveTo || undefined,
+          isActive: createDto.isActive ?? true,
+        },
+      );
 
       return {
         statusCode: HttpStatus.CREATED,
@@ -72,19 +67,28 @@ export class SalaryRateScheduleService {
         data: rateSchedule,
       };
     } catch (error) {
+      // Re-throw known exceptions with their original context
       if (
         error instanceof BadRequestException ||
-        error instanceof ConflictException
+        error instanceof ConflictException ||
+        error instanceof NotFoundException
       ) {
         throw error;
       }
 
+      // Log unexpected errors with full context
       this.logger.error(
         `Failed to create salary rate schedule: ${error.message}`,
         error.stack,
+        {
+          category: createDto.category,
+          subCategory: createDto.subCategory,
+          effectiveFrom: createDto.effectiveFrom,
+          effectiveTo: createDto.effectiveTo,
+        },
       );
       throw new BadRequestException(
-        'Failed to create salary rate schedule. Please check your input.',
+        `Failed to create salary rate schedule: ${error.message}`,
       );
     }
   }
@@ -305,6 +309,7 @@ export class SalaryRateScheduleService {
 
   /**
    * Get active rate for a given category, subcategory, and date
+   * Returns the rate that was/is effective on the given date (even if rate is now closed)
    */
   async getActiveRate(
     category: SalaryCategory,
@@ -312,6 +317,23 @@ export class SalaryRateScheduleService {
     date: Date = new Date(),
   ): Promise<SalaryRateSchedule | null> {
     return this.salaryRateScheduleRepository.findActiveRate(
+      category,
+      subCategory,
+      date,
+    );
+  }
+
+  /**
+   * Get rate schedule that was effective on a specific date
+   * This works for both active and inactive rates (historical lookup)
+   */
+  async getRateForDate(
+    category: SalaryCategory,
+    subCategory: SalarySubCategory,
+    date: Date,
+  ): Promise<SalaryRateSchedule | null> {
+    // Query for rate that was effective on this date, regardless of isActive status
+    return this.salaryRateScheduleRepository.findRateForDate(
       category,
       subCategory,
       date,
