@@ -8,9 +8,10 @@ import { ConfigModule } from '@nestjs/config';
 import { CompanyRepository } from 'src/company/company.repository';
 import { DesignationRepository } from 'src/designations/designation.repository';
 import { DepartmentRepository } from 'src/departments/department.repository';
+import { SalaryRateScheduleModule } from 'src/salary-rate-schedule/salary-rate-schedule.module';
 
 @Module({
-  imports: [ConfigModule.forRoot()],
+  imports: [ConfigModule.forRoot(), SalaryRateScheduleModule],
   controllers: [EmployeeController],
   providers: [
     EmployeeService,

@@ -1,7 +1,14 @@
-import { IsOptional, IsString, IsInt, IsEnum } from 'class-validator';
+import { IsOptional, IsString, IsInt, IsEnum, IsNumber, IsBoolean } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Title, Gender, Status, Category } from '@prisma/client';
-import { Transform } from 'class-transformer';
+import {
+  Title,
+  Gender,
+  Status,
+  Category,
+  SalaryCategory,
+  SalarySubCategory,
+} from '@prisma/client';
+import { Transform, Type } from 'class-transformer';
 
 export class UpdateEmployeeDto {
   @ApiPropertyOptional()
@@ -89,6 +96,53 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsInt()
   age?: number;
+
+  // Salary fields
+  @ApiPropertyOptional({
+    enum: SalaryCategory,
+    description: 'Salary category (CENTRAL, STATE, SPECIALIZED)',
+  })
+  @IsOptional()
+  @IsEnum(SalaryCategory)
+  salaryCategory?: SalaryCategory;
+
+  @ApiPropertyOptional({
+    enum: SalarySubCategory,
+    description:
+      'Salary sub-category (SKILLED, UNSKILLED, HIGHSKILLED, SEMISKILLED). Required if salaryCategory is CENTRAL or STATE',
+  })
+  @IsOptional()
+  @IsEnum(SalarySubCategory)
+  salarySubCategory?: SalarySubCategory;
+
+  @ApiPropertyOptional({
+    type: 'number',
+    description:
+      'Monthly salary for SPECIALIZED category. Not used for CENTRAL/STATE categories',
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  monthlySalary?: number;
+
+  @ApiPropertyOptional({
+    type: 'boolean',
+    description: 'Whether PF is enabled for this employee',
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  pfEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    type: 'boolean',
+    description: 'Whether ESIC is enabled for this employee',
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  esicEnabled?: boolean;
 }
 
 export class UpdateEmployeeContactDetailsDto {

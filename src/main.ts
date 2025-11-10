@@ -7,6 +7,9 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 // @ts-ignore - compression types will be installed
 import * as compression from 'compression';
 
+// Set timezone to IST (Asia/Kolkata) for the entire application
+process.env.TZ = 'Asia/Kolkata';
+
 async function bootstrap() {
   // ✅ Secure CORS
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {

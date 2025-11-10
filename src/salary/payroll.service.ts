@@ -6,7 +6,13 @@ import {
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { Employee, SalaryTemplate, EmploymentHistory } from '@prisma/client';
+import {
+  Employee,
+  SalaryTemplate,
+  EmploymentHistory,
+  SalaryCategory,
+  EmployeeSalaryHistory,
+} from '@prisma/client';
 import { CompanyRepository } from 'src/company/company.repository';
 import { SalaryFieldPurpose } from 'src/company/enum/company.enum';
 import { EmployeeRepository } from 'src/employee/employee.repository';
@@ -15,6 +21,7 @@ import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 import { PayrollRepository } from './payroll.repository';
 import { endOfMonth } from 'date-fns';
 import { FinalizePayrollDto } from './dto/finalize-payroll.dto';
+import { SalaryRateScheduleService } from 'src/salary-rate-schedule/salary-rate-schedule.service';
 
 @Injectable()
 export class PayrollService {
@@ -24,6 +31,7 @@ export class PayrollService {
     private readonly payrollRepository: PayrollRepository,
     private readonly companyRepository: CompanyRepository,
     private readonly employeeRepository: EmployeeRepository,
+    private readonly salaryRateScheduleService: SalaryRateScheduleService,
   ) {}
 
   async calculatePayroll(data: CalculatePayrollDto): Promise<IResponse<any>> {
@@ -461,6 +469,13 @@ export class PayrollService {
       companyId,
     );
 
+    // Batch get employee salary history for the payroll month
+    const salaryHistoryMap =
+      await this.payrollRepository.getEmployeeSalaryHistoryForMonthBatch(
+        employeeIds,
+        payrollMonth,
+      );
+
     // Create a map for O(1) lookup
     const employmentMap = new Map(
       allEmploymentHistories.map((eh) => [eh.employeeId, eh]),
@@ -489,6 +504,9 @@ export class PayrollService {
         // Get admin input for this employee
         const adminInput = adminInputs?.[employee.id] || {};
 
+        // Get salary history for this month (if exists, otherwise use current employee salary)
+        const salaryHistory = salaryHistoryMap.get(employee.id);
+
         // Calculate salary based on template, attendance, and admin input
         const salaryCalculation = this.calculateEmployeeSalary(
           employee,
@@ -497,10 +515,12 @@ export class PayrollService {
           basicDuty,
           presentDays,
           adminInput,
+          payrollMonth,
+          salaryHistory,
         );
 
         // Set serial number (1-based index)
-        salaryCalculation.serialNumber = idx + 1;
+        (salaryCalculation as any).serialNumber = idx + 1;
 
         return {
           employeeId: employee.id,
@@ -564,30 +584,158 @@ export class PayrollService {
     }
   }
 
-  private calculateEmployeeSalary(
+  private async calculateEmployeeSalary(
     employee: Employee,
     currentEmployment: EmploymentHistory,
     templateConfig: any,
     basicDuty: number,
     presentDays: number,
     adminInput: Record<string, number> = {},
-  ): Record<string, any> {
-    // Get monthly salary from employment history
-    const monthlySalary = currentEmployment.salary;
+    payrollMonth: string,
+    salaryHistory?: EmployeeSalaryHistory | null,
+  ): Promise<Record<string, any>> {
+    // Validate payroll month format
+    const monthRegex = /^\d{4}-\d{2}$/;
+    if (!monthRegex.test(payrollMonth)) {
+      throw new BadRequestException(
+        `Invalid payroll month format. Expected YYYY-MM, got: ${payrollMonth}`,
+      );
+    }
 
-    // Calculate wages per day
-    const wagesPerDay = monthlySalary / basicDuty;
+    // Validate presentDays
+    if (presentDays < 0) {
+      throw new BadRequestException(
+        `Present days cannot be negative for employee ${employee.id}`,
+      );
+    }
 
-    // Calculate basic pay based on attendance
-    const basicPay = wagesPerDay * presentDays;
+    // Determine salary source: use historical salary if available, otherwise use current employee salary
+    let salaryCategory: SalaryCategory | null = null;
+    let salarySubCategory: any = null;
+    let salaryPerDay: number | null = null;
+    let monthlySalary: number | null = null;
+
+    if (salaryHistory) {
+      // Use historical salary for this month
+      salaryCategory = salaryHistory.salaryCategory;
+      salarySubCategory = salaryHistory.salarySubCategory;
+      salaryPerDay = salaryHistory.ratePerDay ?? null;
+      monthlySalary = salaryHistory.monthlySalary ?? null;
+    } else if (employee.salaryCategory) {
+      // Use current employee salary
+      salaryCategory = employee.salaryCategory;
+      salarySubCategory = employee.salarySubCategory;
+      salaryPerDay = employee.salaryPerDay ?? null;
+      monthlySalary = employee.monthlySalary ?? null;
+    } else {
+      // Fallback to employment history salary (legacy)
+      // Use salaryPerDay if available (for CENTRAL/STATE employees)
+      if (currentEmployment.salaryPerDay) {
+        salaryPerDay = currentEmployment.salaryPerDay;
+        // Determine category from salaryType if available
+        if (currentEmployment.salaryType === 'PER_DAY') {
+          // Try to infer category from employee's current employment
+          // For legacy employees, we'll use the salary as monthly equivalent
+          monthlySalary = currentEmployment.salary;
+        }
+      } else {
+        // For SPECIALIZED or legacy employees without salaryPerDay
+        monthlySalary = currentEmployment.salary;
+      }
+    }
+
+    // Calculate gross salary based on category
+    let grossSalary = 0;
+    let wagesPerDay = 0;
+    let basicPay = 0;
+
+    // Handle CENTRAL/STATE category (explicit or inferred from salaryPerDay + salaryType)
+    const isCentralStateCategory =
+      salaryCategory === SalaryCategory.CENTRAL ||
+      salaryCategory === SalaryCategory.STATE ||
+      (salaryPerDay && salaryPerDay > 0 && currentEmployment.salaryType === 'PER_DAY');
+
+    if (isCentralStateCategory) {
+      // For Central/State: per-day rate * present days
+      if (salaryPerDay && salaryPerDay > 0) {
+        wagesPerDay = salaryPerDay;
+        grossSalary = salaryPerDay * presentDays;
+        basicPay = grossSalary; // For per-day, basic pay = gross salary
+      } else {
+        // Try to lookup from rate schedule if salaryPerDay is missing
+        if (salarySubCategory) {
+          const [year, monthNum] = payrollMonth.split('-').map(Number);
+          const monthDate = new Date(year, monthNum - 1, 15); // Use mid-month date for lookup
+          try {
+            const activeRate = await this.salaryRateScheduleService.getActiveRate(
+              salaryCategory,
+              salarySubCategory,
+              monthDate,
+            );
+            if (activeRate) {
+              wagesPerDay = activeRate.ratePerDay;
+              grossSalary = activeRate.ratePerDay * presentDays;
+              basicPay = grossSalary;
+            } else {
+              throw new BadRequestException(
+                `Employee ${employee.id} (${salaryCategory} ${salarySubCategory}) missing salaryPerDay and no active rate schedule found for ${payrollMonth}`,
+              );
+            }
+          } catch (error) {
+            if (error instanceof BadRequestException) {
+              throw error;
+            }
+            throw new BadRequestException(
+              `Employee ${employee.id} (${salaryCategory} ${salarySubCategory}) missing salaryPerDay and failed to lookup rate schedule: ${error.message}`,
+            );
+          }
+        } else {
+          throw new BadRequestException(
+            `Employee ${employee.id} (${salaryCategory}) missing salaryPerDay and salarySubCategory`,
+          );
+        }
+      }
+    } else if (salaryCategory === SalaryCategory.SPECIALIZED) {
+      // For Specialized: (monthlySalary / totalDaysInMonth) * presentDays
+      if (monthlySalary && monthlySalary > 0) {
+        // Parse month to get total days
+        const [year, monthNum] = payrollMonth.split('-').map(Number);
+        const totalDaysInMonth = new Date(year, monthNum, 0).getDate();
+        if (totalDaysInMonth === 0) {
+          throw new BadRequestException(
+            `Invalid month in payroll month: ${payrollMonth}`,
+          );
+        }
+        wagesPerDay = monthlySalary / totalDaysInMonth;
+        grossSalary = (monthlySalary / totalDaysInMonth) * presentDays;
+        basicPay = grossSalary; // For specialized, basic pay = gross salary
+      } else {
+        throw new BadRequestException(
+          `Employee ${employee.id} (SPECIALIZED) missing or invalid monthlySalary`,
+        );
+      }
+    } else {
+      // Legacy fallback: use employment history salary
+      if (monthlySalary) {
+        wagesPerDay = monthlySalary / basicDuty;
+        basicPay = wagesPerDay * presentDays;
+        grossSalary = basicPay;
+      } else {
+        throw new BadRequestException(
+          `Employee ${employee.id} missing salary information`,
+        );
+      }
+    }
 
     // Initialize salary calculation object
     const salaryCalculation: Record<string, any> = {
-      monthlySalary,
+      monthlySalary: salaryCategory === SalaryCategory.SPECIALIZED ? monthlySalary : null,
+      salaryPerDay: salaryCategory !== SalaryCategory.SPECIALIZED ? salaryPerDay : null,
       wagesPerDay: Math.round(wagesPerDay * 100) / 100, // Round to 2 decimals
       basicDuty,
       dutyDone: presentDays,
       basicPay: Math.round(basicPay * 100) / 100,
+      grossSalary: Math.round(grossSalary * 100) / 100, // Initial gross salary (before allowances)
     };
 
     // Process all fields dynamically based on template
@@ -597,6 +745,12 @@ export class PayrollService {
     templateConfig.fields.forEach((field) => {
       let fieldValue = 0;
 
+      // Skip PF and ESIC - they will be calculated separately after gross salary is finalized
+      if (field.key === 'pf' || field.key === 'esic') {
+        salaryCalculation[field.key] = 0; // Placeholder, will be recalculated
+        return;
+      }
+
       // Use admin input if required
       if (field.requiresAdminInput && adminInput[field.key] !== undefined) {
         fieldValue = Number(adminInput[field.key]);
@@ -605,10 +759,10 @@ export class PayrollService {
       } else {
         fieldValue = this.calculateFieldValue(field, {
           basicPay,
-          monthlySalary,
+          monthlySalary: monthlySalary || 0,
           presentDays,
           basicDuty,
-          grossSalary: basicPay + totalAllowances,
+          grossSalary: grossSalary + totalAllowances,
         });
       }
 
@@ -622,8 +776,37 @@ export class PayrollService {
       salaryCalculation[field.key] = Math.round(fieldValue * 100) / 100;
     });
 
+    // Calculate final gross salary with allowances
+    const finalGrossSalary = grossSalary + totalAllowances;
     salaryCalculation.grossSalary =
-      Math.round((basicPay + totalAllowances) * 100) / 100;
+      Math.round(finalGrossSalary * 100) / 100;
+
+    // Calculate PF and ESIC after gross salary is finalized (with allowances)
+    // PF and ESIC are calculated only if grossSalary <= 15000
+    let pfAmount = 0;
+    let esicAmount = 0;
+
+    // Calculate PF if enabled
+    if (employee.pfEnabled) {
+      if (finalGrossSalary <= 15000) {
+        pfAmount = Math.min(finalGrossSalary * 0.12, 1800); // 12% capped at 1800
+      }
+      salaryCalculation.pf = Math.round(pfAmount * 100) / 100;
+      totalDeductions += pfAmount;
+    } else {
+      salaryCalculation.pf = 0;
+    }
+
+    // Calculate ESIC if enabled
+    if (employee.esicEnabled) {
+      if (finalGrossSalary <= 15000) {
+        esicAmount = Math.min(finalGrossSalary * 0.0075, 113); // 0.75% capped at 113
+      }
+      salaryCalculation.esic = Math.round(esicAmount * 100) / 100;
+      totalDeductions += esicAmount;
+    } else {
+      salaryCalculation.esic = 0;
+    }
     salaryCalculation.totalDeductions = Math.round(totalDeductions * 100) / 100;
     salaryCalculation.netSalary =
       Math.round((salaryCalculation.grossSalary - totalDeductions) * 100) / 100;
@@ -692,12 +875,10 @@ export class PayrollService {
       return rules.amount || 0;
     }
 
-    // Handle specific field calculations (legacy support)
+    // Handle specific field calculations
+    // Note: PF and ESIC are now calculated based on employee flags and gross salary caps
+    // This is handled in calculateEmployeeSalary method, not here
     switch (field.key) {
-      case 'pf':
-        return basicPay * 0.12; // 12% of basic pay
-      case 'esic':
-        return (grossSalary || basicPay) * 0.0075; // 0.75% of gross salary
       case 'lwf':
         return 10; // Fixed amount
       default:

@@ -193,6 +193,8 @@ export class CompanyRepository {
             firstName: true,
             lastName: true,
             id: true,
+            salaryCategory: true,
+            salarySubCategory: true,
           },
         },
         designation: {
@@ -206,6 +208,8 @@ export class CompanyRepository {
           },
         },
         salary: true,
+        salaryPerDay: true,
+        salaryType: true,
         joiningDate: true,
         leavingDate: true,
       },
@@ -221,6 +225,10 @@ export class CompanyRepository {
       designation: employee.designation.name,
       department: employee.department.name,
       salary: employee.salary,
+      salaryPerDay: employee.salaryPerDay,
+      salaryType: employee.salaryType,
+      salaryCategory: employee.employee.salaryCategory,
+      salarySubCategory: employee.employee.salarySubCategory,
       joiningDate: employee.joiningDate,
       leavingDate: employee.leavingDate,
     }));

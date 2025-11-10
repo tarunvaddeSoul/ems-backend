@@ -18,6 +18,8 @@ import {
   Title,
 } from '../enum/employee.enum';
 import { IsDateFormat } from '../../common/validators/date-format.decorator';
+import { SalaryCategory, SalarySubCategory } from '@prisma/client';
+import { IsBoolean } from 'class-validator';
 
 export class CreateEmployeeDto {
   @ApiProperty({ enum: Title })
@@ -298,4 +300,58 @@ export class CreateEmployeeDto {
   @IsString()
   @Transform(({ value }) => value.toUpperCase())
   otherDocumentRemarks?: string;
+
+  // Salary fields
+  @ApiProperty({
+    enum: SalaryCategory,
+    description: 'Salary category (CENTRAL, STATE, SPECIALIZED)',
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(SalaryCategory)
+  salaryCategory?: SalaryCategory;
+
+  @ApiProperty({
+    enum: SalarySubCategory,
+    description:
+      'Salary sub-category (SKILLED, UNSKILLED, HIGHSKILLED, SEMISKILLED). Required if salaryCategory is CENTRAL or STATE',
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(SalarySubCategory)
+  salarySubCategory?: SalarySubCategory;
+
+  @ApiProperty({
+    type: 'number',
+    description:
+      'Monthly salary for SPECIALIZED category. Not used for CENTRAL/STATE categories',
+    required: false,
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  monthlySalary?: number;
+
+  @ApiProperty({
+    type: 'boolean',
+    description: 'Whether PF is enabled for this employee',
+    default: false,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  pfEnabled?: boolean;
+
+  @ApiProperty({
+    type: 'boolean',
+    description: 'Whether ESIC is enabled for this employee',
+    default: false,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  esicEnabled?: boolean;
 }
