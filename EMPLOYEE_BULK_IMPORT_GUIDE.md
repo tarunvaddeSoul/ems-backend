@@ -1,8 +1,20 @@
 # Employee Bulk Import CSV Template Guide
 
+## ⚠️ IMPORTANT: DO NOT MODIFY HEADERS
+
+**CRITICAL:** The column headers in this CSV file are in **camelCase** format (e.g., `firstName`, `lastName`, `dateOfBirth`) and **MUST NOT BE CHANGED**. 
+
+- ❌ **DO NOT** change headers to human-readable format (e.g., "First Name", "Last Name", "Date of Birth")
+- ❌ **DO NOT** add spaces, special characters, or change the casing
+- ✅ **KEEP** headers exactly as they are: `firstName`, `lastName`, `dateOfBirth`, etc.
+
+The headers match the database field names exactly. Changing them will cause the import script to fail.
+
 ## CSV File Format
 
 This CSV template is designed for bulk importing employees with basic details, salary information, contact details, bank details, additional details, and reference details.
+
+**Header Format:** All headers are in camelCase matching the database schema (e.g., `firstName`, `mobileNumber`, `bankAccountNumber`)
 
 ## Column Descriptions
 
@@ -126,11 +138,38 @@ MR,Raj,Kumar,10-03-1988,MALE,Ram Kumar,Shanti Devi,,A+,TEN,15-01-2024,ACTIVE,OBC
 
 ## Common Errors to Avoid
 
-1. ❌ Using `True` or `TRUE` instead of `true` for boolean fields
-2. ❌ Using `YYYY-MM-DD` format instead of `DD-MM-YYYY` for dates
-3. ❌ Including spaces in empty fields
-4. ❌ Missing required fields
-5. ❌ Using invalid enum values (case-sensitive)
-6. ❌ Providing `monthlySalary` for CENTRAL/STATE employees
-7. ❌ Providing `salarySubCategory` for SPECIALIZED employees
+1. ❌ **MODIFYING HEADERS** - Changing `firstName` to "First Name" or any other format (THIS WILL BREAK THE IMPORT SCRIPT)
+2. ❌ Using `True` or `TRUE` instead of `true` for boolean fields
+3. ❌ Using `YYYY-MM-DD` format instead of `DD-MM-YYYY` for dates
+4. ❌ Including spaces in empty fields
+5. ❌ Missing required fields
+6. ❌ Using invalid enum values (case-sensitive)
+7. ❌ Providing `monthlySalary` for CENTRAL/STATE employees
+8. ❌ Providing `salarySubCategory` for SPECIALIZED employees
+
+## For Script Developers
+
+When writing the import script, the CSV headers are in camelCase and match the database schema exactly:
+
+- Headers: `firstName`, `lastName`, `dateOfBirth`, `mobileNumber`, etc.
+- These map directly to database fields
+- No header transformation is needed
+- Read headers as-is from the first row of the CSV
+
+Example script structure:
+```javascript
+// Read CSV
+const headers = csvRows[0]; // ['title', 'firstName', 'lastName', ...]
+const dataRows = csvRows.slice(1);
+
+// Headers match DB fields directly - no mapping needed
+dataRows.forEach(row => {
+  const employee = {
+    title: row[headers.indexOf('title')],
+    firstName: row[headers.indexOf('firstName')],
+    lastName: row[headers.indexOf('lastName')],
+    // ... etc
+  };
+});
+```
 
