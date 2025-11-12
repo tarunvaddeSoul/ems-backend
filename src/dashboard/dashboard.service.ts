@@ -67,4 +67,28 @@ export class DashboardService {
   async getRecentPayrolls(limit = 5) {
     return await this.dashboardRepository.getRecentPayrolls(limit);
   }
+
+  async getUpcomingCompanyAnniversaries(daysAhead = 30) {
+    return await this.dashboardRepository.getUpcomingCompanyAnniversaries(daysAhead);
+  }
+
+  async getEmployeeGrowthOverTime(months = 12) {
+    return await this.dashboardRepository.getEmployeeGrowthOverTime(months);
+  }
+
+  async getCompanyGrowthOverTime(months = 12) {
+    return await this.dashboardRepository.getCompanyGrowthOverTime(months);
+  }
+
+  async getCompanyTenureInfo() {
+    return await this.dashboardRepository.getCompanyTenureInfo();
+  }
+
+  async getEmployeeGrowthByYear(years = 5) {
+    return await this.dashboardRepository.getEmployeeGrowthByYear(years);
+  }
+
+  async getCompanyGrowthByYear(years = 5) {
+    return await this.dashboardRepository.getCompanyGrowthByYear(years);
+  }
 }
