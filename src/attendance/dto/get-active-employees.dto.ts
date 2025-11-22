@@ -24,4 +24,3 @@ export class GetActiveEmployeesDto {
   })
   month: string;
 }
-

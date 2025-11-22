@@ -264,17 +264,16 @@ export class EmployeeService {
           const onboardingDateObj = new Date(year, month, day, 12, 0, 0);
 
           // Check if rate schedule exists for the new onboarding date
-          const activeRate =
-            await this.salaryRateScheduleService.getActiveRate(
-              existingEmployee.salaryCategory,
-              existingEmployee.salarySubCategory,
-              onboardingDateObj,
-            );
+          const activeRate = await this.salaryRateScheduleService.getActiveRate(
+            existingEmployee.salaryCategory,
+            existingEmployee.salarySubCategory,
+            onboardingDateObj,
+          );
 
           if (!activeRate) {
             throw new BadRequestException(
               `No active salary rate schedule found for ${existingEmployee.salaryCategory} - ${existingEmployee.salarySubCategory} on ${updateEmployeeDto.employeeOnboardingDate}. ` +
-              `Cannot update onboarding date to a date before the rate schedule effective date.`,
+                `Cannot update onboarding date to a date before the rate schedule effective date.`,
             );
           }
 
@@ -554,9 +553,14 @@ export class EmployeeService {
     let salaryPerDayValue: number | null = null;
 
     if (!employmentSalary && employeeId) {
-      const employee = await this.employeeRepository.getEmployeeById(employeeId);
+      const employee = await this.employeeRepository.getEmployeeById(
+        employeeId,
+      );
       if (employee) {
-        if (employee.salaryCategory && employee.salaryCategory !== SalaryCategory.SPECIALIZED) {
+        if (
+          employee.salaryCategory &&
+          employee.salaryCategory !== SalaryCategory.SPECIALIZED
+        ) {
           // For Central/State: convert per-day to monthly equivalent (assume 30 days)
           if (employee.salaryPerDay) {
             employmentSalary = employee.salaryPerDay * 30;
@@ -571,9 +575,14 @@ export class EmployeeService {
       }
     } else if (employmentSalary) {
       // If salary is provided manually, determine type from employee's category
-      const employee = await this.employeeRepository.getEmployeeById(employeeId);
+      const employee = await this.employeeRepository.getEmployeeById(
+        employeeId,
+      );
       if (employee) {
-        if (employee.salaryCategory && employee.salaryCategory !== SalaryCategory.SPECIALIZED) {
+        if (
+          employee.salaryCategory &&
+          employee.salaryCategory !== SalaryCategory.SPECIALIZED
+        ) {
           salaryType = SalaryType.PER_DAY;
           // Calculate per-day from monthly equivalent if provided
           if (employee.salaryPerDay) {
@@ -647,7 +656,7 @@ export class EmployeeService {
       // If joining date is being updated, validate and recalculate salary for CENTRAL/STATE employees
       if (updateDto.joiningDate) {
         const newJoiningDate = updateDto.joiningDate;
-        
+
         // Parse the new joining date
         const parts = newJoiningDate.split('-');
         if (parts.length === 3) {
@@ -678,7 +687,7 @@ export class EmployeeService {
             if (!activeRate) {
               throw new BadRequestException(
                 `No active salary rate schedule found for ${employee.salaryCategory} - ${employee.salarySubCategory} on ${newJoiningDate}. ` +
-                `Cannot update joining date to a date before the rate schedule effective date.`,
+                  `Cannot update joining date to a date before the rate schedule effective date.`,
               );
             }
 
@@ -1146,9 +1155,7 @@ export class EmployeeService {
    * For Central/State: Lookup rate from SalaryRateSchedule
    * For Specialized: Use monthlySalary from DTO
    */
-  private async assignSalaryData(
-    data: CreateEmployeeDto,
-  ): Promise<{
+  private async assignSalaryData(data: CreateEmployeeDto): Promise<{
     salaryCategory?: SalaryCategory;
     salarySubCategory?: SalarySubCategory;
     salaryPerDay?: number;
@@ -1187,32 +1194,34 @@ export class EmployeeService {
         );
       }
       // Lookup active rate from SalaryRateSchedule
-      const activeRate =
-        await this.salaryRateScheduleService.getActiveRate(
-          data.salaryCategory,
-          data.salarySubCategory,
-          onboardingDate,
-        );
+      const activeRate = await this.salaryRateScheduleService.getActiveRate(
+        data.salaryCategory,
+        data.salarySubCategory,
+        onboardingDate,
+      );
 
       if (!activeRate) {
         // Check if any rate schedule exists for this category/subcategory
-        const allRates = await this.salaryRateScheduleService.getActiveRatesByCategory(
-          data.salaryCategory,
-          data.salarySubCategory,
-        );
-        
+        const allRates =
+          await this.salaryRateScheduleService.getActiveRatesByCategory(
+            data.salaryCategory,
+            data.salarySubCategory,
+          );
+
         if (!allRates.data || allRates.data.length === 0) {
           throw new NotFoundException(
             `No salary rate schedule exists for ${data.salaryCategory} - ${data.salarySubCategory}. Please create a rate schedule first.`,
           );
         }
-        
+
         // Rate exists but not effective on this date
         const latestRate = allRates.data[0]; // Already sorted by effectiveFrom desc
         throw new NotFoundException(
           `No active salary rate schedule found for ${data.salaryCategory} - ${data.salarySubCategory} on ${data.employeeOnboardingDate}. ` +
-          `Latest available rate is effective from ${latestRate.effectiveFrom.toISOString().split('T')[0]}. ` +
-          `Please create a rate schedule that is effective on or before the employee's onboarding date.`,
+            `Latest available rate is effective from ${
+              latestRate.effectiveFrom.toISOString().split('T')[0]
+            }. ` +
+            `Please create a rate schedule that is effective on or before the employee's onboarding date.`,
         );
       }
 
@@ -1234,9 +1243,7 @@ export class EmployeeService {
       }
 
       if (data.monthlySalary <= 0) {
-        throw new BadRequestException(
-          'monthlySalary must be greater than 0',
-        );
+        throw new BadRequestException('monthlySalary must be greater than 0');
       }
 
       return {

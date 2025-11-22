@@ -1,4 +1,11 @@
-import { IsOptional, IsString, IsInt, IsEnum, IsNumber, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsInt,
+  IsEnum,
+  IsNumber,
+  IsBoolean,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   Title,
@@ -90,7 +97,8 @@ export class UpdateEmployeeDto {
   recruitedBy?: string;
 
   @ApiPropertyOptional({
-    description: 'Age is automatically calculated from dateOfBirth when dateOfBirth is updated. Manual age values will be overridden if dateOfBirth is provided.',
+    description:
+      'Age is automatically calculated from dateOfBirth when dateOfBirth is updated. Manual age values will be overridden if dateOfBirth is provided.',
     readOnly: true,
   })
   @IsOptional()

@@ -69,4 +69,3 @@ export class AttendanceListResponseDto extends AttendanceResponseDto {
   })
   designationName: string | null;
 }
-

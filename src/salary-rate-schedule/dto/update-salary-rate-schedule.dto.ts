@@ -27,7 +27,8 @@ export class UpdateSalaryRateScheduleDto {
   effectiveFrom?: string;
 
   @ApiPropertyOptional({
-    description: 'Effective to date (ISO 8601 format). Optional - null means ongoing',
+    description:
+      'Effective to date (ISO 8601 format). Optional - null means ongoing',
     example: '2024-09-30T23:59:59.999Z',
   })
   @IsOptional()
@@ -42,4 +43,3 @@ export class UpdateSalaryRateScheduleDto {
   @IsBoolean()
   isActive?: boolean;
 }
-

@@ -69,7 +69,9 @@ export class DashboardService {
   }
 
   async getUpcomingCompanyAnniversaries(daysAhead = 30) {
-    return await this.dashboardRepository.getUpcomingCompanyAnniversaries(daysAhead);
+    return await this.dashboardRepository.getUpcomingCompanyAnniversaries(
+      daysAhead,
+    );
   }
 
   async getEmployeeGrowthOverTime(months = 12) {

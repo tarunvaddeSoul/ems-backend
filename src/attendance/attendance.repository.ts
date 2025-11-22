@@ -41,7 +41,9 @@ export class AttendanceRepository {
     }
   }
 
-  async bulkMarkAttendance(records: MarkAttendanceDto[]): Promise<Attendance[]> {
+  async bulkMarkAttendance(
+    records: MarkAttendanceDto[],
+  ): Promise<Attendance[]> {
     try {
       // Use a transaction to ensure all records are created atomically
       return await this.prisma.$transaction(
@@ -290,7 +292,11 @@ export class AttendanceRepository {
     }
   }
 
-  async getAttendanceByFilters(filters: { companyId?: string; employeeId?: string; month?: string }) {
+  async getAttendanceByFilters(filters: {
+    companyId?: string;
+    employeeId?: string;
+    month?: string;
+  }) {
     try {
       const { companyId, employeeId, month } = filters;
       const where: any = {};
@@ -326,10 +332,13 @@ export class AttendanceRepository {
         companyId: rec.companyId,
         month: rec.month,
         presentCount: rec.presentCount,
-        employeeName: `${rec.employee.firstName} ${rec.employee.lastName}`.trim(),
+        employeeName:
+          `${rec.employee.firstName} ${rec.employee.lastName}`.trim(),
         employeeID: rec.employee.id,
-        departmentName: rec.employee.employmentHistories[0]?.department?.name || null,
-        designationName: rec.employee.employmentHistories[0]?.designation?.name || null,
+        departmentName:
+          rec.employee.employmentHistories[0]?.department?.name || null,
+        designationName:
+          rec.employee.employmentHistories[0]?.designation?.name || null,
       }));
     } catch (error) {
       throw error;
@@ -417,9 +426,7 @@ export class AttendanceRepository {
         select: { id: true, name: true },
       });
 
-      const companyMap = new Map(
-        companies.map((c) => [c.id, c.name]),
-      );
+      const companyMap = new Map(companies.map((c) => [c.id, c.name]));
 
       return {
         data: sheets.map((sheet) => ({

@@ -1,8 +1,21 @@
-import { IsOptional, IsInt, Min, Max, IsString, IsEnum, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+  IsString,
+  IsEnum,
+  IsBoolean,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsDateFormat } from '../../common/validators/date-format.decorator';
-import { Status, SalaryCategory, SalarySubCategory, Title } from '@prisma/client';
+import {
+  Status,
+  SalaryCategory,
+  SalarySubCategory,
+  Title,
+} from '@prisma/client';
 
 enum SortOrder {
   ASC = 'asc',
@@ -112,7 +125,8 @@ export class GetAllEmployeesDto {
 
   @ApiPropertyOptional({
     enum: SalarySubCategory,
-    description: 'Filter by salary sub-category (SKILLED, UNSKILLED, HIGHSKILLED, SEMISKILLED)',
+    description:
+      'Filter by salary sub-category (SKILLED, UNSKILLED, HIGHSKILLED, SEMISKILLED)',
   })
   @IsOptional()
   @IsEnum(SalarySubCategory)
@@ -138,7 +152,8 @@ export class GetAllEmployeesDto {
 
   @ApiPropertyOptional({
     type: Number,
-    description: 'Minimum salary (filters by salaryPerDay for CENTRAL/STATE or monthlySalary for SPECIALIZED)',
+    description:
+      'Minimum salary (filters by salaryPerDay for CENTRAL/STATE or monthlySalary for SPECIALIZED)',
   })
   @IsOptional()
   @IsInt()
@@ -148,7 +163,8 @@ export class GetAllEmployeesDto {
 
   @ApiPropertyOptional({
     type: Number,
-    description: 'Maximum salary (filters by salaryPerDay for CENTRAL/STATE or monthlySalary for SPECIALIZED)',
+    description:
+      'Maximum salary (filters by salaryPerDay for CENTRAL/STATE or monthlySalary for SPECIALIZED)',
   })
   @IsOptional()
   @IsInt()

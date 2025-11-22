@@ -23,7 +23,10 @@ import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 import { PayrollService } from './payroll.service';
 import { Response } from 'express';
 import { FinalizePayrollDto } from './dto/finalize-payroll.dto';
-import { ApiResponseDto, ApiErrorResponseDto } from 'src/common/dto/api-response.dto';
+import {
+  ApiResponseDto,
+  ApiErrorResponseDto,
+} from 'src/common/dto/api-response.dto';
 
 @ApiTags('Payroll')
 @UseInterceptors(TransformInterceptor)
@@ -79,7 +82,8 @@ export class PayrollController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Bad Request - Invalid data provided or payroll already finalized',
+    description:
+      'Bad Request - Invalid data provided or payroll already finalized',
     type: ApiErrorResponseDto,
   })
   @ApiResponse({
@@ -267,7 +271,8 @@ export class PayrollController {
   @Get('by-month/:companyId/:payrollMonth')
   @ApiOperation({
     summary: 'Get payroll records for a company by month',
-    description: 'Retrieve all payroll records for a specific company and month. Returns detailed salary breakdown for each employee.',
+    description:
+      'Retrieve all payroll records for a specific company and month. Returns detailed salary breakdown for each employee.',
   })
   @ApiParam({
     name: 'companyId',

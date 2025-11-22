@@ -12,7 +12,6 @@ import {
   SalaryType,
   SalaryCategory,
   SalarySubCategory,
-  EmployeeSalaryHistory,
   Gender,
   Category,
 } from '@prisma/client';
@@ -177,7 +176,10 @@ export class EmployeeRepository {
               employmentSalary = salaryData.monthlySalary;
               salaryType = SalaryType.PER_MONTH;
             }
-          } else if (data.salaryCategory && data.salaryCategory !== 'SPECIALIZED') {
+          } else if (
+            data.salaryCategory &&
+            data.salaryCategory !== 'SPECIALIZED'
+          ) {
             // Fallback: Use data directly if salaryData not available
             if (data.salaryPerDay) {
               employmentSalary = data.salaryPerDay * 30;
@@ -199,8 +201,8 @@ export class EmployeeRepository {
                 salaryType === SalaryType.PER_DAY && salaryData?.salaryPerDay
                   ? salaryData.salaryPerDay
                   : salaryType === SalaryType.PER_DAY && data.salaryPerDay
-                    ? data.salaryPerDay
-                    : null,
+                  ? data.salaryPerDay
+                  : null,
               salaryType: salaryType,
               joiningDate: data.currentCompanyJoiningDate,
               companyName: data.currentCompanyName,
@@ -674,7 +676,7 @@ export class EmployeeRepository {
       } else {
         // If no specific category, check both (OR condition)
         const salaryOrConditions: Prisma.EmployeeWhereInput[] = [];
-        
+
         // CENTRAL/STATE condition
         const perDayCondition: Prisma.EmployeeWhereInput = {
           salaryPerDay: {
@@ -698,10 +700,7 @@ export class EmployeeRepository {
           // If OR already exists (from searchText), we need to combine properly
           // Create an AND condition that includes both the existing OR and salary OR
           const existingOr = where.OR;
-          where.AND = [
-            { OR: existingOr },
-            { OR: salaryOrConditions },
-          ];
+          where.AND = [{ OR: existingOr }, { OR: salaryOrConditions }];
           delete where.OR;
         } else {
           where.OR = salaryOrConditions;
@@ -711,7 +710,8 @@ export class EmployeeRepository {
 
     // Title and blood group filters
     if (title) where.title = title;
-    if (bloodGroup) where.bloodGroup = { contains: bloodGroup, mode: 'insensitive' };
+    if (bloodGroup)
+      where.bloodGroup = { contains: bloodGroup, mode: 'insensitive' };
 
     // Contact details filters (city, state, district)
     if (city || state || district) {
@@ -723,7 +723,10 @@ export class EmployeeRepository {
         where.contactDetails.state = { contains: state, mode: 'insensitive' };
       }
       if (district) {
-        where.contactDetails.district = { contains: district, mode: 'insensitive' };
+        where.contactDetails.district = {
+          contains: district,
+          mode: 'insensitive',
+        };
       }
     }
 

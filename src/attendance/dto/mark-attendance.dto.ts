@@ -1,12 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsNotEmpty,
-  IsString,
-  Matches,
-  IsInt,
-  Min,
-} from 'class-validator';
+import { IsNotEmpty, IsString, Matches, IsInt, Min } from 'class-validator';
 
 export class MarkAttendanceDto {
   @IsNotEmpty()

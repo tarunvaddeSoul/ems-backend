@@ -4,6 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { NestExpressApplication } from '@nestjs/platform-express';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - compression types will be installed
 import * as compression from 'compression';
 

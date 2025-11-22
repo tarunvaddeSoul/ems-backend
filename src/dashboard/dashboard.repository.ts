@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service'; // Adjust the import path as needed
-
+import { PrismaService } from '../prisma/prisma.service';
 @Injectable()
 export class DashboardRepository {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async getTotalEmployees(): Promise<number> {
     return this.prisma.employee.count();
@@ -19,7 +18,8 @@ export class DashboardRepository {
     );
 
     // Format dates to match the database format (DD-MM-YYYY)
-    const formattedFirstDay = this.formatDateToComparableString(firstDayOfMonth);
+    const formattedFirstDay =
+      this.formatDateToComparableString(firstDayOfMonth);
     const formattedLastDay = this.formatDateToComparableString(lastDayOfMonth);
 
     // Filter employees in memory since we're comparing string dates
@@ -223,6 +223,7 @@ export class DashboardRepository {
 
     return companies.filter((company) => {
       if (!company.companyOnboardingDate) return false;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const [day, month, year] = company.companyOnboardingDate
         .split('-')
         .map((part) => parseInt(part, 10));
@@ -234,11 +235,14 @@ export class DashboardRepository {
   // Employee growth over time (monthly for last 12 months)
   async getEmployeeGrowthOverTime(months = 12) {
     const today = new Date();
-    const data: Array<{ month: string; count: number; newEmployees: number }> = [];
+    const data: Array<{ month: string; count: number; newEmployees: number }> =
+      [];
 
     for (let i = months - 1; i >= 0; i--) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthStr = `${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, '0')}`;
       const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
       const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
@@ -274,11 +278,14 @@ export class DashboardRepository {
   // Company growth over time (monthly for last 12 months)
   async getCompanyGrowthOverTime(months = 12) {
     const today = new Date();
-    const data: Array<{ month: string; count: number; newCompanies: number }> = [];
+    const data: Array<{ month: string; count: number; newCompanies: number }> =
+      [];
 
     for (let i = months - 1; i >= 0; i--) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthStr = `${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, '0')}`;
       const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
       const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
@@ -289,13 +296,15 @@ export class DashboardRepository {
 
       // Count total companies up to this month (using createdAt or companyOnboardingDate)
       const totalCount = allCompanies.filter((comp) => {
-        const compDate = comp.createdAt || this.parseDate(comp.companyOnboardingDate);
+        const compDate =
+          comp.createdAt || this.parseDate(comp.companyOnboardingDate);
         return compDate <= lastDay;
       }).length;
 
       // Count new companies in this month
       const newCompanies = allCompanies.filter((comp) => {
-        const compDate = comp.createdAt || this.parseDate(comp.companyOnboardingDate);
+        const compDate =
+          comp.createdAt || this.parseDate(comp.companyOnboardingDate);
         return compDate >= firstDay && compDate <= lastDay;
       }).length;
 
@@ -332,7 +341,8 @@ export class DashboardRepository {
 
     const companyDetails = companies.map((company) => {
       const onboardingDate = this.parseDate(company.companyOnboardingDate);
-      const monthsDiff = (today.getFullYear() - onboardingDate.getFullYear()) * 12 +
+      const monthsDiff =
+        (today.getFullYear() - onboardingDate.getFullYear()) * 12 +
         (today.getMonth() - onboardingDate.getMonth());
       const years = monthsDiff / 12;
 
@@ -358,19 +368,24 @@ export class DashboardRepository {
     return {
       tenureDistribution: tenureGroups,
       companies: companyDetails,
-      averageTenureMonths: companyDetails.length > 0
-        ? companyDetails.reduce((sum, c) => sum + c.monthsWithUs, 0) / companyDetails.length
-        : 0,
-      averageTenureYears: companyDetails.length > 0
-        ? companyDetails.reduce((sum, c) => sum + c.yearsWithUs, 0) / companyDetails.length
-        : 0,
+      averageTenureMonths:
+        companyDetails.length > 0
+          ? companyDetails.reduce((sum, c) => sum + c.monthsWithUs, 0) /
+            companyDetails.length
+          : 0,
+      averageTenureYears:
+        companyDetails.length > 0
+          ? companyDetails.reduce((sum, c) => sum + c.yearsWithUs, 0) /
+            companyDetails.length
+          : 0,
     };
   }
 
   // Employee growth by year (yearly trend)
   async getEmployeeGrowthByYear(years = 5) {
     const today = new Date();
-    const data: Array<{ year: number; count: number; newEmployees: number }> = [];
+    const data: Array<{ year: number; count: number; newEmployees: number }> =
+      [];
 
     for (let i = years - 1; i >= 0; i--) {
       const year = today.getFullYear() - i;
@@ -406,7 +421,8 @@ export class DashboardRepository {
   // Company growth by year (yearly trend)
   async getCompanyGrowthByYear(years = 5) {
     const today = new Date();
-    const data: Array<{ year: number; count: number; newCompanies: number }> = [];
+    const data: Array<{ year: number; count: number; newCompanies: number }> =
+      [];
 
     for (let i = years - 1; i >= 0; i--) {
       const year = today.getFullYear() - i;
@@ -418,12 +434,14 @@ export class DashboardRepository {
       });
 
       const totalCount = allCompanies.filter((comp) => {
-        const compDate = comp.createdAt || this.parseDate(comp.companyOnboardingDate);
+        const compDate =
+          comp.createdAt || this.parseDate(comp.companyOnboardingDate);
         return compDate <= yearEnd;
       }).length;
 
       const newCompanies = allCompanies.filter((comp) => {
-        const compDate = comp.createdAt || this.parseDate(comp.companyOnboardingDate);
+        const compDate =
+          comp.createdAt || this.parseDate(comp.companyOnboardingDate);
         return compDate >= yearStart && compDate <= yearEnd;
       }).length;
 

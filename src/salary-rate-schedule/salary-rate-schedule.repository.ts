@@ -95,10 +95,7 @@ export class SalaryRateScheduleRepository {
         subCategory,
         isActive: true,
         effectiveFrom: { lte: date },
-        OR: [
-          { effectiveTo: null },
-          { effectiveTo: { gte: date } },
-        ],
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: date } }],
       },
       orderBy: { effectiveFrom: 'desc' },
     });
@@ -206,10 +203,7 @@ export class SalaryRateScheduleRepository {
         category,
         subCategory,
         effectiveFrom: { lte: date },
-        OR: [
-          { effectiveTo: null },
-          { effectiveTo: { gte: date } },
-        ],
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: date } }],
       },
       orderBy: { effectiveFrom: 'desc' },
     });
@@ -275,7 +269,8 @@ export class SalaryRateScheduleRepository {
 
         const ongoingRate = existingRates.find(
           (rate) =>
-            rate.effectiveTo === null && rate.effectiveFrom < data.effectiveFrom,
+            rate.effectiveTo === null &&
+            rate.effectiveFrom < data.effectiveFrom,
         );
 
         if (ongoingRate) {
@@ -292,7 +287,7 @@ export class SalaryRateScheduleRepository {
           // There's still an overlap that couldn't be auto-resolved
           throw new ConflictException(
             `An active rate schedule already exists for ${data.category} - ${data.subCategory} that overlaps with the specified date range. ` +
-            `Please close the existing rate schedule first or adjust the date range.`,
+              `Please close the existing rate schedule first or adjust the date range.`,
           );
         }
       }
@@ -374,4 +369,3 @@ export class SalaryRateScheduleRepository {
     return count > 0;
   }
 }
-

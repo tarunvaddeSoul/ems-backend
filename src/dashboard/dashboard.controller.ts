@@ -1,11 +1,13 @@
-import { Controller, Get, Query, UseInterceptors, HttpCode, HttpStatus } from '@nestjs/common';
-import { DashboardService } from './dashboard.service';
 import {
-  ApiQuery,
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-} from '@nestjs/swagger';
+  Controller,
+  Get,
+  Query,
+  UseInterceptors,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { DashboardService } from './dashboard.service';
+import { ApiQuery, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { ApiResponseDto } from 'src/common/dto/api-response.dto';
 
@@ -19,14 +21,16 @@ export class DashboardController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get dashboard report',
-    description: 'Retrieves comprehensive dashboard statistics including employee stats, company stats, growth metrics, special dates (birthdays, employee/company anniversaries), and recent activity. Includes data suitable for graphical representation.',
+    description:
+      'Retrieves comprehensive dashboard statistics including employee stats, company stats, growth metrics, special dates (birthdays, employee/company anniversaries), and recent activity. Includes data suitable for graphical representation.',
   })
   @ApiQuery({
     name: 'daysAhead',
     required: false,
     type: Number,
     example: 30,
-    description: 'Number of days ahead to fetch birthdays and anniversaries (default: 30)',
+    description:
+      'Number of days ahead to fetch birthdays and anniversaries (default: 30)',
   })
   @ApiResponse({
     status: 200,
@@ -50,8 +54,12 @@ export class DashboardController {
           employeeStats: {
             total: 150,
             newThisMonth: 5,
-            byDepartment: [{ departmentName: 'Engineering', _count: { departmentName: 50 } }],
-            byDesignation: [{ designationName: 'Developer', _count: { designationName: 30 } }],
+            byDepartment: [
+              { departmentName: 'Engineering', _count: { departmentName: 50 } },
+            ],
+            byDesignation: [
+              { designationName: 'Developer', _count: { designationName: 30 } },
+            ],
             activeInactive: { active: 140, inactive: 10 },
           },
           companyStats: {

@@ -15,4 +15,3 @@ import { PrismaService } from 'src/prisma/prisma.service';
   exports: [SalaryRateScheduleService, SalaryRateScheduleRepository],
 })
 export class SalaryRateScheduleModule {}
-

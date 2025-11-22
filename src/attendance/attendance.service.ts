@@ -9,7 +9,7 @@ import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { AttendanceRepository } from './attendance.repository';
 import { EmployeeRepository } from 'src/employee/employee.repository';
 import { BulkMarkAttendanceDto } from './dto/bulk-mark-attendance.dto';
-import { Attendance, Status } from '@prisma/client';
+import { Attendance } from '@prisma/client';
 import { CompanyRepository } from 'src/company/company.repository';
 import { UploadAttendanceSheetDto } from './dto/upload-attendance-sheet.dto';
 import { AwsS3Service } from 'src/aws/aws-s3.service';
@@ -19,6 +19,7 @@ import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AttendanceReportResponseDto } from './dto/attendance-report-response.dto';
 import { ListAttendanceQueryDto } from './dto/list-attendance-query.dto';
 import { ListAttendanceSheetsDto } from './dto/list-attendance-sheets.dto';
+import { Response } from 'express';
 
 @Injectable()
 export class AttendanceService {
@@ -60,8 +61,13 @@ export class AttendanceService {
 
       // validate days range
       const maxDays = this.getDaysInMonth(markAttendanceDto.month);
-      if (markAttendanceDto.presentCount < 0 || markAttendanceDto.presentCount > maxDays) {
-        throw new BadRequestException(`presentCount must be between 0 and ${maxDays} for ${markAttendanceDto.month}`);
+      if (
+        markAttendanceDto.presentCount < 0 ||
+        markAttendanceDto.presentCount > maxDays
+      ) {
+        throw new BadRequestException(
+          `presentCount must be between 0 and ${maxDays} for ${markAttendanceDto.month}`,
+        );
       }
 
       const markAttendanceResponse =
@@ -122,7 +128,9 @@ export class AttendanceService {
       for (const r of records) {
         const maxDays = this.getDaysInMonth(r.month);
         if (r.presentCount < 0 || r.presentCount > maxDays) {
-          throw new BadRequestException(`Employee ${r.employeeId} month ${r.month}: presentCount must be between 0 and ${maxDays}`);
+          throw new BadRequestException(
+            `Employee ${r.employeeId} month ${r.month}: presentCount must be between 0 and ${maxDays}`,
+          );
         }
       }
 
@@ -154,7 +162,12 @@ export class AttendanceService {
       if (!attendanceSheet) {
         throw new BadRequestException('file is required');
       }
-      const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+      const allowed = [
+        'application/pdf',
+        'image/png',
+        'image/jpeg',
+        'image/jpg',
+      ];
       const maxBytes = 10 * 1024 * 1024; // 10 MB
       if (!allowed.includes(attendanceSheet.mimetype)) {
         throw new BadRequestException('Unsupported file type');
@@ -164,18 +177,23 @@ export class AttendanceService {
       }
 
       // Check for existing sheet and delete old file if exists
-      const existingSheet = await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(
-        companyId,
-        month,
-      );
+      const existingSheet =
+        await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(
+          companyId,
+          month,
+        );
       if (existingSheet && existingSheet.attendanceSheetUrl) {
         // Extract S3 key from URL and delete old file
-        const oldKey = this.extractS3KeyFromUrl(existingSheet.attendanceSheetUrl);
+        const oldKey = this.extractS3KeyFromUrl(
+          existingSheet.attendanceSheetUrl,
+        );
         if (oldKey) {
           try {
             await this.awsS3Service.deleteFile(oldKey);
           } catch (deleteError) {
-            this.logger.warn(`Failed to delete old file from S3: ${deleteError.message}`);
+            this.logger.warn(
+              `Failed to delete old file from S3: ${deleteError.message}`,
+            );
             // Continue with upload even if deletion fails
           }
         }
@@ -187,7 +205,7 @@ export class AttendanceService {
         attendanceSheet,
         `${folder}/${month}`,
       );
-      
+
       // Save/update database record
       const saveAttendanceSheetResponse =
         await this.attendanceRepository.saveAttendanceSheet(
@@ -222,12 +240,12 @@ export class AttendanceService {
       // https://bucket-name.s3.region.amazonaws.com/key/path
       // https://s3.amazonaws.com/bucket-name/key/path
       const urlObj = new URL(url);
-      
+
       // Pattern 1: https://bucket.s3.amazonaws.com/key
       if (urlObj.hostname.includes('.s3.amazonaws.com')) {
         return urlObj.pathname.substring(1); // Remove leading '/'
       }
-      
+
       // Pattern 2: https://s3.amazonaws.com/bucket/key
       if (urlObj.hostname === 's3.amazonaws.com') {
         const parts = urlObj.pathname.split('/');
@@ -235,12 +253,15 @@ export class AttendanceService {
           return parts.slice(2).join('/'); // Remove /bucket from path
         }
       }
-      
+
       // Pattern 3: https://bucket.s3.region.amazonaws.com/key
-      if (urlObj.hostname.includes('.s3.') && urlObj.hostname.includes('.amazonaws.com')) {
+      if (
+        urlObj.hostname.includes('.s3.') &&
+        urlObj.hostname.includes('.amazonaws.com')
+      ) {
         return urlObj.pathname.substring(1);
       }
-      
+
       // If URL format doesn't match, try to extract from pathname
       return urlObj.pathname.substring(1) || null;
     } catch (error) {
@@ -394,15 +415,25 @@ export class AttendanceService {
     try {
       const attendance = await this.attendanceRepository.getAttendanceById(id);
       if (!attendance) {
-        throw new NotFoundException(`Attendance record with ID ${id} not found.`);
+        throw new NotFoundException(
+          `Attendance record with ID ${id} not found.`,
+        );
       }
       if (typeof updateAttendanceDto.presentCount === 'number') {
         const maxDays = this.getDaysInMonth(attendance.month);
-        if (updateAttendanceDto.presentCount < 0 || updateAttendanceDto.presentCount > maxDays) {
-          throw new BadRequestException(`presentCount must be between 0 and ${maxDays} for ${attendance.month}`);
+        if (
+          updateAttendanceDto.presentCount < 0 ||
+          updateAttendanceDto.presentCount > maxDays
+        ) {
+          throw new BadRequestException(
+            `presentCount must be between 0 and ${maxDays} for ${attendance.month}`,
+          );
         }
       }
-      const updated = await this.attendanceRepository.updateAttendance(id, attendance.presentCount);
+      const updated = await this.attendanceRepository.updateAttendance(
+        id,
+        attendance.presentCount,
+      );
       return {
         statusCode: HttpStatus.OK,
         message: 'Attendance updated',
@@ -427,9 +458,7 @@ export class AttendanceService {
       // Validate company exists
       const company = await this.companyRepository.findById(companyId);
       if (!company) {
-        throw new NotFoundException(
-          `Company with ID ${companyId} not found.`,
-        );
+        throw new NotFoundException(`Company with ID ${companyId} not found.`);
       }
 
       // Get active employees for the month
@@ -459,12 +488,19 @@ export class AttendanceService {
     }
   }
 
-  async getAttendanceSheetByCompanyAndMonth(companyId: string, month: string): Promise<IResponse<any>> {
+  async getAttendanceSheetByCompanyAndMonth(
+    companyId: string,
+    month: string,
+  ): Promise<IResponse<any>> {
     try {
       if (!companyId || !month) {
         throw new BadRequestException('companyId and month are required');
       }
-      const sheet = await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(companyId, month);
+      const sheet =
+        await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(
+          companyId,
+          month,
+        );
       if (!sheet) {
         return {
           statusCode: HttpStatus.OK,
@@ -483,26 +519,33 @@ export class AttendanceService {
     }
   }
 
-  async listAttendanceSheets(query: ListAttendanceSheetsDto): Promise<IResponse<any>> {
+  async listAttendanceSheets(
+    query: ListAttendanceSheetsDto,
+  ): Promise<IResponse<any>> {
     try {
       // Validation: month cannot be used with startMonth/endMonth
       if (query.month && (query.startMonth || query.endMonth)) {
-        throw new BadRequestException('month cannot be used with startMonth or endMonth');
+        throw new BadRequestException(
+          'month cannot be used with startMonth or endMonth',
+        );
       }
 
       // Validation: startMonth must be <= endMonth
       if (query.startMonth && query.endMonth) {
         if (query.startMonth > query.endMonth) {
-          throw new BadRequestException('startMonth must be less than or equal to endMonth');
+          throw new BadRequestException(
+            'startMonth must be less than or equal to endMonth',
+          );
         }
       }
 
       // If both companyId and month are provided, return single record (backward compatibility)
       if (query.companyId && query.month) {
-        const sheet = await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(
-          query.companyId,
-          query.month,
-        );
+        const sheet =
+          await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(
+            query.companyId,
+            query.month,
+          );
         if (!sheet) {
           return {
             statusCode: HttpStatus.OK,
@@ -527,7 +570,9 @@ export class AttendanceService {
       }
 
       // Otherwise, use list endpoint with pagination
-      const result = await this.attendanceRepository.listAttendanceSheets(query);
+      const result = await this.attendanceRepository.listAttendanceSheets(
+        query,
+      );
       return {
         statusCode: HttpStatus.OK,
         message: 'Attendance sheets retrieved successfully',
@@ -565,7 +610,10 @@ export class AttendanceService {
     }
   }
 
-  async getAttendanceReport(companyId: string, month: string): Promise<IResponse<AttendanceReportResponseDto | null>> {
+  async getAttendanceReport(
+    companyId: string,
+    month: string,
+  ): Promise<IResponse<AttendanceReportResponseDto | null>> {
     try {
       if (!companyId || !month) {
         throw new BadRequestException('companyId and month are required');
@@ -576,7 +624,11 @@ export class AttendanceService {
         throw new NotFoundException('Company not found');
       }
       // Fetch attendance records for company+month
-      const attendanceRecords = await this.attendanceRepository.getAllAttendanceRecordsByCompanyIdAndMonth(companyId, month);
+      const attendanceRecords =
+        await this.attendanceRepository.getAllAttendanceRecordsByCompanyIdAndMonth(
+          companyId,
+          month,
+        );
       // Pull minimal info for report (normalize for DTO)
       const records = (attendanceRecords || []).map((row: any) => ({
         employeeId: row.employeeID,
@@ -588,15 +640,31 @@ export class AttendanceService {
       }));
       // Compute stats
       const totalEmployees = records.length;
-      const totalPresent = records.reduce((sum, r) => sum + (r.presentCount || 0), 0);
-      const averageAttendance = totalEmployees ? totalPresent / totalEmployees : 0;
+      const totalPresent = records.reduce(
+        (sum, r) => sum + (r.presentCount || 0),
+        0,
+      );
+      const averageAttendance = totalEmployees
+        ? totalPresent / totalEmployees
+        : 0;
       const presentCountsArr = records.map((r) => r.presentCount);
-      const minPresent = presentCountsArr.length ? Math.min(...presentCountsArr) : 0;
-      const maxPresent = presentCountsArr.length ? Math.max(...presentCountsArr) : 0;
+      const minPresent = presentCountsArr.length
+        ? Math.min(...presentCountsArr)
+        : 0;
+      const maxPresent = presentCountsArr.length
+        ? Math.max(...presentCountsArr)
+        : 0;
       // Get attendanceSheet
-      const attendanceSheetObj = await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(companyId, month);
+      const attendanceSheetObj =
+        await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(
+          companyId,
+          month,
+        );
       const attendanceSheet = attendanceSheetObj
-        ? { id: attendanceSheetObj.id, attendanceSheetUrl: attendanceSheetObj.attendanceSheetUrl }
+        ? {
+            id: attendanceSheetObj.id,
+            attendanceSheetUrl: attendanceSheetObj.attendanceSheetUrl,
+          }
         : null;
       // Company minimal DTO
       const companyReport = {
@@ -607,7 +675,13 @@ export class AttendanceService {
       const report: AttendanceReportResponseDto = {
         company: companyReport,
         month,
-        totals: { totalEmployees, totalPresent, averageAttendance, minPresent, maxPresent },
+        totals: {
+          totalEmployees,
+          totalPresent,
+          averageAttendance,
+          minPresent,
+          maxPresent,
+        },
         records,
         attendanceSheet,
       };
@@ -622,14 +696,22 @@ export class AttendanceService {
     }
   }
 
-  async getAttendanceReportPdf(companyId: string, month: string, res: any): Promise<any> {
+  async getAttendanceReportPdf(
+    companyId: string,
+    month: string,
+    res: Response,
+  ): Promise<any> {
     // Stub for now: send JSON error or placeholder.
-    return res.status(400).json({ statusCode: 400, message: 'Invalid request', data: null });
+    return res
+      .status(400)
+      .json({ statusCode: 400, message: 'Invalid request', data: null });
   }
 
   async getByFilters(query: ListAttendanceQueryDto): Promise<IResponse<any>> {
     try {
-      const data = await this.attendanceRepository.getAttendanceByFilters(query);
+      const data = await this.attendanceRepository.getAttendanceByFilters(
+        query,
+      );
       return { statusCode: HttpStatus.OK, message: 'OK', data };
     } catch (error) {
       this.logger.error('Error retrieving attendance by filters', error.stack);
@@ -689,8 +771,7 @@ export class AttendanceService {
       const joinedBeforeOrDuringMonth = joiningDate <= monthEnd;
 
       // Employee must not have left before the month started (or still be active)
-      const leftAfterMonthStarted =
-        !leavingDate || leavingDate >= monthStart;
+      const leftAfterMonthStarted = !leavingDate || leavingDate >= monthStart;
 
       return joinedBeforeOrDuringMonth && leftAfterMonthStarted;
     });

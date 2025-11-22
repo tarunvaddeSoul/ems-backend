@@ -20,15 +20,16 @@ import {
   ApiOperation,
   ApiBody,
   ApiParam,
-  ApiQuery,
 } from '@nestjs/swagger';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
-import { ApiResponseDto, ApiErrorResponseDto } from 'src/common/dto/api-response.dto';
+import {
+  ApiResponseDto,
+  ApiErrorResponseDto,
+} from 'src/common/dto/api-response.dto';
 import { DeleteCompaniesDto } from './dto/delete-companies.dto';
 import { GetAllCompaniesDto } from './dto/get-all-companies.dto';
 import { UpdateCompanyDto } from './dto/company.dto';
 import { CreateCompanyDto } from './dto/create-company.dto';
-import { GetEmployeesResponseDto } from './dto/get-employees-response.dto';
 import { Response } from 'express';
 
 @Controller('companies')
@@ -41,7 +42,8 @@ export class CompanyController {
   @Post()
   @ApiOperation({
     summary: 'Create a new company',
-    description: 'Creates a new company with salary template configuration. Company name must be unique.',
+    description:
+      'Creates a new company with salary template configuration. Company name must be unique.',
   })
   @ApiBody({ type: CreateCompanyDto })
   @ApiResponse({
@@ -72,7 +74,8 @@ export class CompanyController {
   @Put(':id')
   @ApiOperation({
     summary: 'Update a company',
-    description: 'Updates company details including name, address, contact info, and salary configuration options.',
+    description:
+      'Updates company details including name, address, contact info, and salary configuration options.',
   })
   @ApiParam({
     name: 'id',
@@ -157,7 +160,8 @@ export class CompanyController {
   @Get(':id')
   @ApiOperation({
     summary: 'Get a company by ID',
-    description: 'Retrieves detailed information about a specific company including all configuration settings',
+    description:
+      'Retrieves detailed information about a specific company including all configuration settings',
   })
   @ApiParam({
     name: 'id',
@@ -207,7 +211,8 @@ export class CompanyController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete company',
-    description: 'Deletes a company by ID. Note: This may cascade delete related records.',
+    description:
+      'Deletes a company by ID. Note: This may cascade delete related records.',
   })
   @ApiParam({
     name: 'id',
