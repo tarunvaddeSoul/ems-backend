@@ -63,14 +63,7 @@ async function bootstrap() {
     // 🧪 Dev — relaxed security (Swagger works on HTTP / IP)
     app.use(
       helmet({
-        contentSecurityPolicy: {
-          directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"], // allow inline JS
-            styleSrc: ["'self'", "'unsafe-inline'"], // allow inline styles
-            imgSrc: ["'self'", 'data:', 'https:'],
-          },
-        },
+        contentSecurityPolicy: false,
         crossOriginEmbedderPolicy: false,
         crossOriginOpenerPolicy: false,
         crossOriginResourcePolicy: false,
