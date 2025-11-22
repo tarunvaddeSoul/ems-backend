@@ -27,37 +27,58 @@ async function bootstrap() {
   // ✅ Content Security Policy (CSP)
   // ✅ Strict Transport Security (HSTS)
 
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'"],
-          imgSrc: ["'self'", 'data:'],
-          objectSrc: ["'none'"],
-          frameAncestors: ["'none'"],
-          upgradeInsecureRequests: [],
+  const strictSSL = process.env.STRICT_SSL === 'true';
+
+  if (strictSSL) {
+    // 🔒 Production — strict security
+    app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'"],
+            imgSrc: ["'self'", 'data:'],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'none'"],
+            upgradeInsecureRequests: [],
+          },
         },
-      },
-      hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true,
-        preload: true,
-      },
-      crossOriginEmbedderPolicy: true,
-      crossOriginOpenerPolicy: true,
-      crossOriginResourcePolicy: true,
-      dnsPrefetchControl: true,
-      frameguard: true,
-      hidePoweredBy: true,
-      ieNoOpen: true,
-      noSniff: true,
-      permittedCrossDomainPolicies: true,
-      referrerPolicy: true,
-      xssFilter: true,
-    }),
-  );
+        hsts: {
+          maxAge: 31536000,
+          includeSubDomains: true,
+          preload: true,
+        },
+        crossOriginEmbedderPolicy: true,
+        crossOriginOpenerPolicy: true,
+        crossOriginResourcePolicy: true,
+        hidePoweredBy: true,
+        frameguard: true,
+        xssFilter: true,
+        noSniff: true,
+      }),
+    );
+    console.log('🔐 Strict SSL security enabled');
+  } else {
+    // 🧪 Dev — relaxed security (Swagger works on HTTP / IP)
+    app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"], // allow inline JS
+            styleSrc: ["'self'", "'unsafe-inline'"], // allow inline styles
+            imgSrc: ["'self'", 'data:', 'https:'],
+          },
+        },
+        crossOriginEmbedderPolicy: false,
+        crossOriginOpenerPolicy: false,
+        crossOriginResourcePolicy: false,
+      }),
+    );
+    console.log('🟢 Relaxed security enabled (no SSL required)');
+  }
+
   app.use((req, res, next) => {
     res.removeHeader('Server');
     next();
