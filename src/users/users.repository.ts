@@ -59,6 +59,13 @@ export class UsersRepository {
 
   async storeResetToken(token: string, userId: string, expiresAt: Date) {
     try {
+      // Since userId is unique, we need to upsert (delete old token if exists, then create new)
+      // First, delete any existing reset token for this user
+      await this.prisma.resetToken.deleteMany({
+        where: { userId },
+      });
+
+      // Then create the new token
       const storeResetTokenResponse = await this.prisma.resetToken.create({
         data: {
           token,
@@ -73,26 +80,54 @@ export class UsersRepository {
     }
   }
 
-  async getResetToken(resetToken: string): Promise<ResetToken> {
+  async getResetToken(resetToken: string): Promise<ResetToken | null> {
     try {
       const tokenDetails = await this.prisma.resetToken.findFirst({
         where: { token: resetToken, expiresAt: { gte: new Date() } },
       });
       return tokenDetails;
     } catch (error) {
-      this.logger.error(`Failed to create user: ${error.message}`);
-      return error;
+      this.logger.error(`Failed to get reset token: ${error.message}`);
+      throw error;
     }
   }
 
-  async deleteResetToken(tokenId: string) {
+  async deleteResetToken(tokenId: string): Promise<void> {
     try {
       await this.prisma.resetToken.delete({
         where: { id: tokenId },
       });
     } catch (error) {
-      console.error(`Failed to delete reset token: ${error.message}`);
-      return error;
+      this.logger.error(`Failed to delete reset token: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async invalidateUserResetTokens(userId: string): Promise<void> {
+    try {
+      await this.prisma.resetToken.deleteMany({
+        where: { userId },
+      });
+      this.logger.log(`Invalidated all reset tokens for user: ${userId}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to invalidate reset tokens for user ${userId}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  async invalidateUserRefreshTokens(userId: string): Promise<void> {
+    try {
+      await this.prisma.refreshToken.deleteMany({
+        where: { userId },
+      });
+      this.logger.log(`Invalidated all refresh tokens for user: ${userId}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to invalidate refresh tokens for user ${userId}: ${error.message}`,
+      );
+      throw error;
     }
   }
 
