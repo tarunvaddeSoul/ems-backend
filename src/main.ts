@@ -4,6 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { NestExpressApplication } from '@nestjs/platform-express';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - compression types will be installed
 import * as compression from 'compression';
 
@@ -27,37 +28,51 @@ async function bootstrap() {
   // ✅ Content Security Policy (CSP)
   // ✅ Strict Transport Security (HSTS)
 
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'"],
-          imgSrc: ["'self'", 'data:'],
-          objectSrc: ["'none'"],
-          frameAncestors: ["'none'"],
-          upgradeInsecureRequests: [],
+  const strictSSL = process.env.STRICT_SSL === 'true';
+
+  if (strictSSL) {
+    // 🔒 Production — strict security
+    app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'"],
+            imgSrc: ["'self'", 'data:'],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'none'"],
+            upgradeInsecureRequests: [],
+          },
         },
-      },
-      hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true,
-        preload: true,
-      },
-      crossOriginEmbedderPolicy: true,
-      crossOriginOpenerPolicy: true,
-      crossOriginResourcePolicy: true,
-      dnsPrefetchControl: true,
-      frameguard: true,
-      hidePoweredBy: true,
-      ieNoOpen: true,
-      noSniff: true,
-      permittedCrossDomainPolicies: true,
-      referrerPolicy: true,
-      xssFilter: true,
-    }),
-  );
+        hsts: {
+          maxAge: 31536000,
+          includeSubDomains: true,
+          preload: true,
+        },
+        crossOriginEmbedderPolicy: true,
+        crossOriginOpenerPolicy: true,
+        crossOriginResourcePolicy: true,
+        hidePoweredBy: true,
+        frameguard: true,
+        xssFilter: true,
+        noSniff: true,
+      }),
+    );
+    console.log('🔐 Strict SSL security enabled');
+  } else {
+    // 🧪 Dev — relaxed security (Swagger works on HTTP / IP)
+    app.use(
+      helmet({
+        contentSecurityPolicy: false,
+        crossOriginEmbedderPolicy: false,
+        crossOriginOpenerPolicy: false,
+        crossOriginResourcePolicy: false,
+      }),
+    );
+    console.log('🟢 Relaxed security enabled (no SSL required)');
+  }
+
   app.use((req, res, next) => {
     res.removeHeader('Server');
     next();
@@ -96,7 +111,7 @@ async function bootstrap() {
     )
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('/', app, document, {
+  SwaggerModule.setup('api-docs', app, document, {
     swaggerOptions: {
       deepScanRoutes: true,
       displayRequestDuration: true,

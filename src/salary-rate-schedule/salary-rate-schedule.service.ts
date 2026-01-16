@@ -23,7 +23,7 @@ export class SalaryRateScheduleService {
 
   constructor(
     private readonly salaryRateScheduleRepository: SalaryRateScheduleRepository,
-  ) { }
+  ) {}
 
   async create(
     createDto: CreateSalaryRateScheduleDto,
@@ -43,23 +43,20 @@ export class SalaryRateScheduleService {
 
       // Validate rate is positive
       if (createDto.ratePerDay <= 0) {
-        throw new BadRequestException(
-          'ratePerDay must be greater than 0',
-        );
+        throw new BadRequestException('ratePerDay must be greater than 0');
       }
 
       // Use transaction to ensure atomicity of update + create operations
       // This prevents race conditions and ensures data consistency
-      const rateSchedule = await this.salaryRateScheduleRepository.createWithAutoClose(
-        {
+      const rateSchedule =
+        await this.salaryRateScheduleRepository.createWithAutoClose({
           category: createDto.category,
           subCategory: createDto.subCategory,
           ratePerDay: createDto.ratePerDay,
           effectiveFrom: effectiveFrom,
           effectiveTo: effectiveTo || undefined,
           isActive: createDto.isActive ?? true,
-        },
-      );
+        });
 
       return {
         statusCode: HttpStatus.CREATED,
@@ -93,9 +90,16 @@ export class SalaryRateScheduleService {
     }
   }
 
-  async findAll(
-    queryDto: GetSalaryRateScheduleDto,
-  ): Promise<IResponse<{ data: SalaryRateSchedule[]; total: number; page: number; limit: number; hasNextPage: boolean; hasPrevPage: boolean; }>> {
+  async findAll(queryDto: GetSalaryRateScheduleDto): Promise<
+    IResponse<{
+      data: SalaryRateSchedule[];
+      total: number;
+      page: number;
+      limit: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    }>
+  > {
     try {
       const page = queryDto.page || 1;
       const limit = queryDto.limit || 10;
@@ -133,16 +137,13 @@ export class SalaryRateScheduleService {
         `Failed to retrieve salary rate schedules: ${error.message}`,
         error.stack,
       );
-      throw new BadRequestException(
-        'Failed to retrieve salary rate schedules',
-      );
+      throw new BadRequestException('Failed to retrieve salary rate schedules');
     }
   }
 
   async findById(id: string): Promise<IResponse<SalaryRateSchedule>> {
     try {
-      const rateSchedule =
-        await this.salaryRateScheduleRepository.findById(id);
+      const rateSchedule = await this.salaryRateScheduleRepository.findById(id);
 
       if (!rateSchedule) {
         throw new NotFoundException(
@@ -164,9 +165,7 @@ export class SalaryRateScheduleService {
         `Failed to retrieve salary rate schedule: ${error.message}`,
         error.stack,
       );
-      throw new BadRequestException(
-        'Failed to retrieve salary rate schedule',
-      );
+      throw new BadRequestException('Failed to retrieve salary rate schedule');
     }
   }
 
@@ -176,8 +175,7 @@ export class SalaryRateScheduleService {
   ): Promise<IResponse<SalaryRateSchedule>> {
     try {
       // Check if rate schedule exists
-      const existing =
-        await this.salaryRateScheduleRepository.findById(id);
+      const existing = await this.salaryRateScheduleRepository.findById(id);
 
       if (!existing) {
         throw new NotFoundException(
@@ -247,8 +245,10 @@ export class SalaryRateScheduleService {
         updateData.isActive = updateDto.isActive;
       }
 
-      const updated =
-        await this.salaryRateScheduleRepository.update(id, updateData);
+      const updated = await this.salaryRateScheduleRepository.update(
+        id,
+        updateData,
+      );
 
       return {
         statusCode: HttpStatus.OK,
@@ -276,8 +276,7 @@ export class SalaryRateScheduleService {
 
   async delete(id: string): Promise<IResponse<SalaryRateSchedule>> {
     try {
-      const existing =
-        await this.salaryRateScheduleRepository.findById(id);
+      const existing = await this.salaryRateScheduleRepository.findById(id);
 
       if (!existing) {
         throw new NotFoundException(
@@ -301,9 +300,7 @@ export class SalaryRateScheduleService {
         `Failed to delete salary rate schedule: ${error.message}`,
         error.stack,
       );
-      throw new BadRequestException(
-        'Failed to delete salary rate schedule',
-      );
+      throw new BadRequestException('Failed to delete salary rate schedule');
     }
   }
 
@@ -370,4 +367,3 @@ export class SalaryRateScheduleService {
     }
   }
 }
-

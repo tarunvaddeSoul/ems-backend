@@ -12,7 +12,6 @@ import {
   SalaryType,
   SalaryCategory,
   SalarySubCategory,
-  EmployeeSalaryHistory,
   Gender,
   Category,
 } from '@prisma/client';
@@ -177,7 +176,10 @@ export class EmployeeRepository {
               employmentSalary = salaryData.monthlySalary;
               salaryType = SalaryType.PER_MONTH;
             }
-          } else if (data.salaryCategory && data.salaryCategory !== 'SPECIALIZED') {
+          } else if (
+            data.salaryCategory &&
+            data.salaryCategory !== 'SPECIALIZED'
+          ) {
             // Fallback: Use data directly if salaryData not available
             if (data.salaryPerDay) {
               employmentSalary = data.salaryPerDay * 30;
@@ -199,8 +201,8 @@ export class EmployeeRepository {
                 salaryType === SalaryType.PER_DAY && salaryData?.salaryPerDay
                   ? salaryData.salaryPerDay
                   : salaryType === SalaryType.PER_DAY && data.salaryPerDay
-                    ? data.salaryPerDay
-                    : null,
+                  ? data.salaryPerDay
+                  : null,
               salaryType: salaryType,
               joiningDate: data.currentCompanyJoiningDate,
               companyName: data.currentCompanyName,
@@ -616,6 +618,17 @@ export class EmployeeRepository {
       sortOrder,
       startDate,
       endDate,
+      salaryCategory,
+      salarySubCategory,
+      pfEnabled,
+      esicEnabled,
+      minSalary,
+      maxSalary,
+      title,
+      bloodGroup,
+      city,
+      state,
+      district,
     } = params;
 
     const where: Prisma.EmployeeWhereInput = {};
@@ -636,6 +649,85 @@ export class EmployeeRepository {
       where.age = {};
       if (minAge) where.age.gte = minAge;
       if (maxAge) where.age.lte = maxAge;
+    }
+
+    // Salary category and sub-category filters
+    if (salaryCategory) where.salaryCategory = salaryCategory;
+    if (salarySubCategory) where.salarySubCategory = salarySubCategory;
+
+    // PF and ESIC enabled filters
+    if (pfEnabled !== undefined) where.pfEnabled = pfEnabled;
+    if (esicEnabled !== undefined) where.esicEnabled = esicEnabled;
+
+    // Salary range filter (handles both salaryPerDay and monthlySalary)
+    if (minSalary !== undefined || maxSalary !== undefined) {
+      if (salaryCategory === 'CENTRAL' || salaryCategory === 'STATE') {
+        // For CENTRAL/STATE: filter by salaryPerDay
+        where.salaryPerDay = {
+          ...(minSalary !== undefined && { gte: minSalary }),
+          ...(maxSalary !== undefined && { lte: maxSalary }),
+        };
+      } else if (salaryCategory === 'SPECIALIZED') {
+        // For SPECIALIZED: filter by monthlySalary
+        where.monthlySalary = {
+          ...(minSalary !== undefined && { gte: minSalary }),
+          ...(maxSalary !== undefined && { lte: maxSalary }),
+        };
+      } else {
+        // If no specific category, check both (OR condition)
+        const salaryOrConditions: Prisma.EmployeeWhereInput[] = [];
+
+        // CENTRAL/STATE condition
+        const perDayCondition: Prisma.EmployeeWhereInput = {
+          salaryPerDay: {
+            ...(minSalary !== undefined && { gte: minSalary }),
+            ...(maxSalary !== undefined && { lte: maxSalary }),
+          },
+        };
+        salaryOrConditions.push(perDayCondition);
+
+        // SPECIALIZED condition
+        const monthlyCondition: Prisma.EmployeeWhereInput = {
+          monthlySalary: {
+            ...(minSalary !== undefined && { gte: minSalary }),
+            ...(maxSalary !== undefined && { lte: maxSalary }),
+          },
+        };
+        salaryOrConditions.push(monthlyCondition);
+
+        // Combine with existing OR conditions if any
+        if (where.OR) {
+          // If OR already exists (from searchText), we need to combine properly
+          // Create an AND condition that includes both the existing OR and salary OR
+          const existingOr = where.OR;
+          where.AND = [{ OR: existingOr }, { OR: salaryOrConditions }];
+          delete where.OR;
+        } else {
+          where.OR = salaryOrConditions;
+        }
+      }
+    }
+
+    // Title and blood group filters
+    if (title) where.title = title;
+    if (bloodGroup)
+      where.bloodGroup = { contains: bloodGroup, mode: 'insensitive' };
+
+    // Contact details filters (city, state, district)
+    if (city || state || district) {
+      where.contactDetails = {};
+      if (city) {
+        where.contactDetails.city = { contains: city, mode: 'insensitive' };
+      }
+      if (state) {
+        where.contactDetails.state = { contains: state, mode: 'insensitive' };
+      }
+      if (district) {
+        where.contactDetails.district = {
+          contains: district,
+          mode: 'insensitive',
+        };
+      }
     }
 
     // Employment history filters

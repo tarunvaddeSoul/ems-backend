@@ -23,8 +23,6 @@ import {
   ApiParam,
   ApiQuery,
   ApiBody,
-  ApiExtraModels,
-  getSchemaPath,
 } from '@nestjs/swagger';
 import { DeleteAttendanceDto } from './dto/delete-attendance.dto';
 import { BulkMarkAttendanceDto } from './dto/bulk-mark-attendance.dto';
@@ -40,8 +38,10 @@ import { AttendanceReportResponseDto } from './dto/attendance-report-response.dt
 import { ListAttendanceQueryDto } from './dto/list-attendance-query.dto';
 import { ListAttendanceSheetsDto } from './dto/list-attendance-sheets.dto';
 import { AttendanceSheetListResponseDto } from './dto/attendance-sheet-list-response.dto';
-import { AttendanceResponseDto, AttendanceListResponseDto } from './dto/attendance-response.dto';
-import { ApiResponseWrapperDto, ApiErrorResponseDto } from './dto/api-response-wrapper.dto';
+import {
+  ApiResponseWrapperDto,
+  ApiErrorResponseDto,
+} from './dto/api-response-wrapper.dto';
 
 @ApiTags('Attendance')
 @UseInterceptors(TransformInterceptor)
@@ -53,7 +53,8 @@ export class AttendanceController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Mark attendance for an employee',
-    description: 'Creates or updates attendance record for an employee in a specific company and month. Validates that the employee was active during the specified month.',
+    description:
+      'Creates or updates attendance record for an employee in a specific company and month. Validates that the employee was active during the specified month.',
   })
   @ApiBody({ type: MarkAttendanceDto })
   @ApiResponse({
@@ -105,7 +106,8 @@ export class AttendanceController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Bulk Mark Attendance',
-    description: 'Mark attendance for multiple employees in a single request. All records are processed atomically - either all succeed or all fail. Validates employment status for each employee.',
+    description:
+      'Mark attendance for multiple employees in a single request. All records are processed atomically - either all succeed or all fail. Validates employment status for each employee.',
   })
   @ApiBody({ type: BulkMarkAttendanceDto })
   @ApiResponse({
@@ -172,7 +174,8 @@ export class AttendanceController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get active employees for a company and month',
-    description: 'Returns employees who were active (employed) in the company during the specified month. Useful for bulk attendance marking.',
+    description:
+      'Returns employees who were active (employed) in the company during the specified month. Useful for bulk attendance marking.',
   })
   @ApiResponse({
     status: 200,
@@ -215,27 +218,40 @@ export class AttendanceController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Retrieve attendance records',
-    description: 'List attendance rows by optional filters: companyId, month, employeeId',
+    description:
+      'List attendance rows by optional filters: companyId, month, employeeId',
   })
-  async getAll(@Res() res: Response, @Query() query: ListAttendanceQueryDto): Promise<Response> {
+  async getAll(
+    @Res() res: Response,
+    @Query() query: ListAttendanceQueryDto,
+  ): Promise<Response> {
     const response = await this.attendanceService.getByFilters(query);
     return res.status(response.statusCode).json(response);
   }
 
   @Post('/attendance-sheets')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Upload or replace the attendance sheet for a company + month' })
+  @ApiOperation({
+    summary: 'Upload or replace the attendance sheet for a company + month',
+  })
   @ApiConsumes('multipart/form-data')
-  @ApiResponse({ status: 201, type: AttendanceSheetResponseDto, description: 'Attendance sheet uploaded' })
+  @ApiResponse({
+    status: 201,
+    type: AttendanceSheetResponseDto,
+    description: 'Attendance sheet uploaded',
+  })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 404, description: 'Company not found' })
   @UseInterceptors(FileInterceptor('file'))
   async uploadOrReplaceAttendanceSheet(
     @Res() res: Response,
     @Body() uploadAttendanceSheetDto: UploadAttendanceSheetDto,
-    @UploadedFile() file: Express.Multer.File
+    @UploadedFile() file: Express.Multer.File,
   ): Promise<Response> {
-    const response = await this.attendanceService.uploadAttendanceSheet(uploadAttendanceSheetDto, file);
+    const response = await this.attendanceService.uploadAttendanceSheet(
+      uploadAttendanceSheetDto,
+      file,
+    );
     return res.status(response.statusCode).json(response);
   }
 
@@ -243,7 +259,8 @@ export class AttendanceController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'List attendance sheets with filtering and pagination',
-    description: 'Fetch all attendance sheets with optional filtering by companyId, month, or month range. Supports pagination and sorting. When both companyId and month are provided, returns single record (backward compatible).',
+    description:
+      'Fetch all attendance sheets with optional filtering by companyId, month, or month range. Supports pagination and sorting. When both companyId and month are provided, returns single record (backward compatible).',
   })
   @ApiResponse({
     status: 200,
@@ -266,7 +283,7 @@ export class AttendanceController {
   @ApiResponse({ status: 404, description: 'Sheet not found' })
   async deleteAttendanceSheetById(
     @Res() res: Response,
-    @Param('id') id: string
+    @Param('id') id: string,
   ): Promise<Response> {
     const response = await this.attendanceService.deleteAttendanceSheetById(id);
     return res.status(response.statusCode).json(response);
@@ -276,7 +293,8 @@ export class AttendanceController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Attendance monthly report dataset (JSON for UI/PDF)',
-    description: 'Get aggregated attendance report data for a company and month. Includes company info, totals (employees, present days, averages), all attendance records with employee details, and attendance sheet URL. Perfect for UI rendering or PDF generation.',
+    description:
+      'Get aggregated attendance report data for a company and month. Includes company info, totals (employees, present days, averages), all attendance records with employee details, and attendance sheet URL. Perfect for UI rendering or PDF generation.',
   })
   @ApiQuery({
     name: 'companyId',
@@ -310,23 +328,33 @@ export class AttendanceController {
   async getAttendanceReport(
     @Res() res: Response,
     @Query('companyId') companyId: string,
-    @Query('month') month: string
+    @Query('month') month: string,
   ): Promise<Response> {
-    const response = await this.attendanceService.getAttendanceReport(companyId, month);
+    const response = await this.attendanceService.getAttendanceReport(
+      companyId,
+      month,
+    );
     return res.status(response.statusCode).json(response);
   }
 
   @Get('/reports/pdf')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Attendance monthly report (PDF stream)', description: 'Streams attendance report as PDF, same dataset as /reports.' })
-  @ApiResponse({ status: 200, description: 'PDF attendance report', schema: { type: 'string', format: 'binary' } })
+  @ApiOperation({
+    summary: 'Attendance monthly report (PDF stream)',
+    description: 'Streams attendance report as PDF, same dataset as /reports.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'PDF attendance report',
+    schema: { type: 'string', format: 'binary' },
+  })
   @ApiResponse({ status: 400, description: 'Invalid request' })
   @ApiResponse({ status: 404, description: 'Company or records not found' })
   async getAttendanceReportPdf(
     @Res() res: Response,
     @Query('companyId') companyId: string,
     @Query('month') month: string,
-  ): Promise<any> {
+  ): Promise<Response> {
     return this.attendanceService.getAttendanceReportPdf(companyId, month, res);
   }
 
@@ -379,7 +407,8 @@ export class AttendanceController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update presentCount for attendance record',
-    description: 'Update the presentCount (number of days present) for an existing attendance record. Validates that the new count is within valid range for the month.',
+    description:
+      'Update the presentCount (number of days present) for an existing attendance record. Validates that the new count is within valid range for the month.',
   })
   @ApiParam({
     name: 'id',
@@ -428,7 +457,10 @@ export class AttendanceController {
     @Param('id') id: string,
     @Body() updateAttendanceDto: UpdateAttendanceDto,
   ): Promise<Response> {
-    const response = await this.attendanceService.updateAttendance(id, updateAttendanceDto);
+    const response = await this.attendanceService.updateAttendance(
+      id,
+      updateAttendanceDto,
+    );
     return res.status(response.statusCode).json(response);
   }
 

@@ -10,15 +10,13 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { DepartmentService } from './department.service';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { Response } from 'express';
-import { ApiResponseDto, ApiErrorResponseDto } from 'src/common/dto/api-response.dto';
+import {
+  ApiResponseDto,
+  ApiErrorResponseDto,
+} from 'src/common/dto/api-response.dto';
 
 @ApiTags('Departments')
 @Controller('departments')

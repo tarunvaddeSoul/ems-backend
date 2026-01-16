@@ -235,57 +235,87 @@ export class UsersService {
     }
   }
 
-  async changePassword(oldPassword: string, newPassword: string, userId: any) {
+  async changePassword(
+    oldPassword: string,
+    newPassword: string,
+    userId: string,
+  ): Promise<IResponse<null>> {
     try {
-      const checkUserExists = await this.usersRepository.findUserById(userId);
-      if (!checkUserExists) {
+      const user = await this.usersRepository.findUserById(userId);
+      if (!user) {
         throw new NotFoundException(
           `User with userId: ${userId} does not exist.`,
         );
       }
-      if (oldPassword === newPassword) {
-        throw new ConflictException(
-          `New password cannot be the same as the old password.`,
-        );
-      }
-      const isMatch = await bcrypt.compare(
-        oldPassword,
-        checkUserExists.password,
-      );
+
+      // Validate old password
+      const isMatch = await bcrypt.compare(oldPassword, user.password);
       if (!isMatch) {
         throw new BadRequestException(
           'Old password does not match with the existing password.',
         );
       }
+
+      // Check if new password is same as old password
+      const isSamePassword = await bcrypt.compare(newPassword, user.password);
+      if (isSamePassword) {
+        throw new ConflictException(
+          'New password cannot be the same as the old password.',
+        );
+      }
+
+      // Hash and update password
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      checkUserExists.password = hashedPassword;
-      const updateUser = await this.usersRepository.updateUser(
-        checkUserExists.id,
-        checkUserExists,
-      );
+      const updateUser = await this.usersRepository.updateUser(user.id, {
+        password: hashedPassword,
+      });
+
       if (!updateUser) {
         throw new BadRequestException(
           'Failed to update password. Please try again.',
         );
       }
+
+      // Invalidate all refresh tokens (security: force re-login on all devices)
+      await this.usersRepository.invalidateUserRefreshTokens(user.id);
+
+      this.logger.log(`Password changed successfully for user: ${user.id}`);
+
       return {
         statusCode: HttpStatus.OK,
         message: 'Password successfully updated!',
+        data: null,
       };
     } catch (error) {
-      this.logger.error(`Failed to change user password: ${error.message}`);
+      this.logger.error(
+        `Failed to change user password for userId ${userId}:`,
+        error,
+      );
       throw error;
     }
   }
 
-  async forgotPassword(email: string) {
+  async forgotPassword(email: string): Promise<IResponse<null>> {
     try {
       const user = await this.usersRepository.findUserByEmail(email);
+
+      // Security: Don't reveal if email exists or not
+      // Always return success message to prevent email enumeration attacks
       if (!user) {
-        throw new NotFoundException(
-          `User with email: ${email} does not exist.`,
+        this.logger.warn(
+          `Password reset requested for non-existent email: ${email}`,
         );
+        // Return success to prevent email enumeration
+        return {
+          statusCode: HttpStatus.OK,
+          message:
+            'If an account with that email exists, a password reset link has been sent.',
+          data: null,
+        };
       }
+
+      // Invalidate any existing reset tokens for this user
+      await this.usersRepository.invalidateUserResetTokens(user.id);
 
       // Generate reset token and expiry date
       const resetToken = nanoid(64);
@@ -301,42 +331,102 @@ export class UsersService {
 
       // Send email with reset link
       await this.mailService.sendForgotPasswordEmail(email, resetToken);
-      return { statusCode: 200, message: 'Email sent!' };
+
+      this.logger.log(`Password reset token generated for user: ${user.id}`);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message:
+          'If an account with that email exists, a password reset link has been sent.',
+        data: null,
+      };
     } catch (error) {
-      console.error('Error in forgotPassword:', error);
-      throw error;
+      this.logger.error(`Error in forgotPassword for email ${email}:`, error);
+      // Still return success to prevent email enumeration
+      return {
+        statusCode: HttpStatus.OK,
+        message:
+          'If an account with that email exists, a password reset link has been sent.',
+        data: null,
+      };
     }
   }
 
-  async resetPassword(resetPasswordDto: ResetPasswordDTO): Promise<{
-    statusCode: number;
-    message: string;
-  }> {
+  async resetPassword(
+    resetPasswordDto: ResetPasswordDTO,
+  ): Promise<IResponse<null>> {
     try {
       const { resetToken, newPassword } = resetPasswordDto;
+
+      // Validate token exists and is not expired
       const token = await this.usersRepository.getResetToken(resetToken);
       if (!token) {
-        throw new UnauthorizedException('Invalid link');
-      }
-      const checkUserExists = await this.usersRepository.findUserById(
-        token.userId,
-      );
-      if (!checkUserExists) {
-        throw new NotFoundException(
-          `User with userId: ${token.userId} does not exist.`,
+        throw new UnauthorizedException(
+          'Invalid or expired reset token. Please request a new password reset link.',
         );
       }
-      checkUserExists.password = await bcrypt.hash(newPassword, 10);
-      await this.usersRepository.updateUser(
-        checkUserExists.id,
-        checkUserExists,
-      );
-      // Delete the reset token
-      await this.usersRepository.deleteResetToken(token.id);
 
-      return { statusCode: 200, message: 'Password reset successful!' };
+      // Check if token has expired (additional check)
+      if (token.expiresAt < new Date()) {
+        await this.usersRepository.deleteResetToken(token.id);
+        throw new UnauthorizedException(
+          'Reset token has expired. Please request a new password reset link.',
+        );
+      }
+
+      // Get user
+      const user = await this.usersRepository.findUserById(token.userId);
+      if (!user) {
+        await this.usersRepository.deleteResetToken(token.id);
+        throw new NotFoundException(
+          'User associated with this token does not exist.',
+        );
+      }
+
+      // Check if new password is same as current password
+      const isSamePassword = await bcrypt.compare(newPassword, user.password);
+      if (isSamePassword) {
+        throw new BadRequestException(
+          'New password must be different from your current password.',
+        );
+      }
+
+      // Hash and update password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await this.usersRepository.updateUser(user.id, {
+        password: hashedPassword,
+      });
+
+      // Invalidate all reset tokens for this user (security: prevent token reuse)
+      await this.usersRepository.invalidateUserResetTokens(user.id);
+
+      // Invalidate all refresh tokens (security: force re-login on all devices)
+      await this.usersRepository.invalidateUserRefreshTokens(user.id);
+
+      // Send confirmation email
+      try {
+        await this.mailService.sendPasswordResetConfirmationEmail(
+          user.email,
+          user.name,
+        );
+      } catch (emailError) {
+        // Log but don't fail the password reset if email fails
+        this.logger.warn(
+          `Failed to send password reset confirmation email to ${user.email}:`,
+          emailError,
+        );
+      }
+
+      this.logger.log(`Password reset successful for user: ${user.id}`);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message:
+          'Password reset successful! Please login with your new password.',
+        data: null,
+      };
     } catch (error) {
-      console.error('Error in resetPassword:', error);
+      this.logger.error('Error in resetPassword:', error);
       throw error;
     }
   }

@@ -19,7 +19,10 @@ import {
   ApiBody,
   ApiParam,
 } from '@nestjs/swagger';
-import { ApiResponseDto, ApiErrorResponseDto } from 'src/common/dto/api-response.dto';
+import {
+  ApiResponseDto,
+  ApiErrorResponseDto,
+} from 'src/common/dto/api-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { AuthGuard } from 'src/users/auth.guard';
@@ -41,7 +44,8 @@ export class UsersController {
   @Post('register')
   @ApiOperation({
     summary: 'Register a new user',
-    description: 'Creates a new user account with email, password, and user details. Returns user data and authentication tokens.',
+    description:
+      'Creates a new user account with email, password, and user details. Returns user data and authentication tokens.',
   })
   @ApiBody({ type: RegisterDto })
   @ApiResponse({
@@ -82,7 +86,8 @@ export class UsersController {
   @Post('login')
   @ApiOperation({
     summary: 'Login user',
-    description: 'Authenticates a user with email and password. Returns user data and JWT tokens (access and refresh).',
+    description:
+      'Authenticates a user with email and password. Returns user data and JWT tokens (access and refresh).',
   })
   @ApiBody({ type: LoginDto })
   @ApiResponse({
@@ -164,7 +169,8 @@ export class UsersController {
   @Post('refresh-token/:refreshToken')
   @ApiOperation({
     summary: 'Refresh JWT token',
-    description: 'Refreshes the access token using a valid refresh token. Returns new access and refresh tokens.',
+    description:
+      'Refreshes the access token using a valid refresh token. Returns new access and refresh tokens.',
   })
   @ApiParam({
     name: 'refreshToken',
@@ -203,10 +209,34 @@ export class UsersController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth('Bearer')
   @Put('change-password')
-  @ApiOperation({ summary: 'Change user password' })
+  @ApiOperation({
+    summary: 'Change user password',
+    description:
+      'Changes the authenticated user password. Requires old password verification. After successful change, all existing sessions are invalidated.',
+  })
   @ApiBody({ type: ChangePasswordDTO })
-  @ApiResponse({ status: 200, description: 'Password changed successfully.' })
-  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password changed successfully.',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Password successfully updated!',
+        data: null,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Bad Request - Invalid password format, old password mismatch, or new password same as old',
+    type: ApiErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+    type: ApiErrorResponseDto,
+  })
   async changePassword(
     @Res() res: Response,
     @Req() req,
@@ -223,9 +253,30 @@ export class UsersController {
   }
 
   @Post('forgot-password')
-  @ApiOperation({ summary: 'Send forgot password email' })
+  @ApiOperation({
+    summary: 'Request password reset',
+    description:
+      'Sends a password reset email to the user if the email exists. Returns a generic success message to prevent email enumeration attacks.',
+  })
   @ApiBody({ type: ForgotPasswordDTO })
-  @ApiResponse({ status: 200, description: 'Forgot password email sent.' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'If an account with that email exists, a password reset link has been sent. The reset link expires in 1 hour.',
+    schema: {
+      example: {
+        statusCode: 200,
+        message:
+          'If an account with that email exists, a password reset link has been sent.',
+        data: null,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid email format',
+    type: ApiErrorResponseDto,
+  })
   async forgotPassword(
     @Res() res: Response,
     @Body() forgotPasswordDto: ForgotPasswordDTO,
@@ -237,9 +288,36 @@ export class UsersController {
   }
 
   @Put('reset-password')
-  @ApiOperation({ summary: 'Reset user password' })
+  @ApiOperation({
+    summary: 'Reset user password',
+    description:
+      'Resets the user password using a valid reset token. The token must be obtained from the forgot-password endpoint and must not be expired. After successful reset, all existing sessions are invalidated.',
+  })
   @ApiBody({ type: ResetPasswordDTO })
-  @ApiResponse({ status: 200, description: 'Password reset successfully.' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Password reset successful. User must login with new password.',
+    schema: {
+      example: {
+        statusCode: 200,
+        message:
+          'Password reset successful! Please login with your new password.',
+        data: null,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Bad Request - Invalid password format or password same as current',
+    type: ApiErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or expired reset token',
+    type: ApiErrorResponseDto,
+  })
   async resetPassword(
     @Res() res: Response,
     @Body() resetPasswordDto: ResetPasswordDTO,

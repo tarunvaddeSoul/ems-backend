@@ -13,7 +13,10 @@ export class AttendanceSheetListItemDto {
   @ApiProperty({ type: 'string', example: '2025-10' })
   month: string;
 
-  @ApiProperty({ type: 'string', example: 'https://s3.../attendance-sheets/TCS/2025-10' })
+  @ApiProperty({
+    type: 'string',
+    example: 'https://s3.../attendance-sheets/TCS/2025-10',
+  })
   attendanceSheetUrl: string;
 }
 
@@ -38,4 +41,3 @@ export class AttendanceSheetListResponseDto {
   @ApiProperty({ type: PaginationMetaDto })
   pagination: PaginationMetaDto;
 }
-

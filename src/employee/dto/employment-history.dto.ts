@@ -29,7 +29,8 @@ export class CreateEmploymentHistoryDto {
   departmentId: string;
 
   @ApiPropertyOptional({
-    description: 'Salary snapshot (monthly equivalent). OPTIONAL - If not provided, will be auto-calculated from employee\'s current salary configuration. For CENTRAL/STATE: salaryPerDay * 30, For SPECIALIZED: monthlySalary. Only provide manually for special cases.',
+    description:
+      "Salary snapshot (monthly equivalent). OPTIONAL - If not provided, will be auto-calculated from employee's current salary configuration. For CENTRAL/STATE: salaryPerDay * 30, For SPECIALIZED: monthlySalary. Only provide manually for special cases.",
     example: 26790,
   })
   @IsOptional()
@@ -76,7 +77,8 @@ export class UpdateEmploymentHistoryDto {
   salary?: number;
 
   @ApiPropertyOptional({
-    description: 'Per-day salary rate (for CENTRAL/STATE employees). Auto-calculated when joining date changes.',
+    description:
+      'Per-day salary rate (for CENTRAL/STATE employees). Auto-calculated when joining date changes.',
   })
   @IsOptional()
   @IsNumber()
@@ -101,7 +103,8 @@ export class UpdateEmploymentHistoryDto {
 
   @ApiPropertyOptional({
     enum: SalaryType,
-    description: 'Salary type (PER_DAY or PER_MONTH). Auto-set when salary is recalculated',
+    description:
+      'Salary type (PER_DAY or PER_MONTH). Auto-set when salary is recalculated',
   })
   @IsOptional()
   @IsEnum(SalaryType)

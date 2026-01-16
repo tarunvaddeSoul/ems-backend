@@ -1,0 +1,71 @@
+================================================================================
+EMPLOYEE BULK IMPORT CSV TEMPLATE - IMPORTANT INSTRUCTIONS
+================================================================================
+
+⚠️  CRITICAL: DO NOT MODIFY THE HEADER ROW ⚠️
+
+The column headers in this CSV file are in camelCase format and MUST remain 
+exactly as they are. These headers match the database field names and are 
+required for the import script to work correctly.
+
+❌ DO NOT CHANGE:
+   - firstName → "First Name" 
+   - lastName → "Last Name"
+   - dateOfBirth → "Date of Birth"
+   - mobileNumber → "Mobile Number"
+   - etc.
+
+✅ KEEP AS IS:
+   - firstName
+   - lastName  
+   - dateOfBirth
+   - mobileNumber
+   - etc.
+
+================================================================================
+HOW TO USE THIS TEMPLATE:
+================================================================================
+
+1. Open the CSV file in Excel or Google Sheets
+2. DO NOT modify the first row (header row)
+3. Delete the example rows (rows 2 and 3) if present
+4. Fill in employee data starting from row 2
+5. Save the file as CSV (UTF-8 encoding)
+6. The import script will read the headers exactly as they are
+
+================================================================================
+HEADER MAPPING (for reference only - DO NOT change headers):
+================================================================================
+
+camelCase Header          →  Human-Readable Meaning
+────────────────────────────────────────────────────────────────────────────
+firstName                 →  First Name
+lastName                  →  Last Name
+dateOfBirth               →  Date of Birth
+employeeOnboardingDate    →  Employee Onboarding Date
+highestEducationQualification →  Highest Education Qualification
+mobileNumber              →  Mobile Number
+aadhaarNumber             →  Aadhaar Number
+permanentAddress          →  Permanent Address
+presentAddress            →  Present Address
+bankAccountNumber         →  Bank Account Number
+ifscCode                  →  IFSC Code
+bankName                  →  Bank Name
+bankCity                  →  Bank City
+pfUanNumber               →  PF UAN Number
+esicNumber                →  ESIC Number
+policeVerificationNumber  →  Police Verification Number
+policeVerificationDate    →  Police Verification Date
+trainingCertificateNumber  →  Training Certificate Number
+trainingCertificateDate    →  Training Certificate Date
+medicalCertificateNumber   →  Medical Certificate Number
+medicalCertificateDate     →  Medical Certificate Date
+referenceName             →  Reference Name
+referenceAddress          →  Reference Address
+referenceNumber           →  Reference Number
+
+================================================================================
+NOTE: This mapping is for your reference only. The actual CSV headers 
+      must remain in camelCase format.
+================================================================================
+

@@ -464,10 +464,11 @@ export class PayrollService {
 
     // Batch get all employment histories in a single query instead of N+1
     const employeeIds = employees.map((e) => e.id);
-    const allEmploymentHistories = await this.employeeRepository.getActiveEmploymentHistories(
-      employeeIds,
-      companyId,
-    );
+    const allEmploymentHistories =
+      await this.employeeRepository.getActiveEmploymentHistories(
+        employeeIds,
+        companyId,
+      );
 
     // Batch get employee salary history for the payroll month
     const salaryHistoryMap =
@@ -653,7 +654,9 @@ export class PayrollService {
     const isCentralStateCategory =
       salaryCategory === SalaryCategory.CENTRAL ||
       salaryCategory === SalaryCategory.STATE ||
-      (salaryPerDay && salaryPerDay > 0 && currentEmployment.salaryType === 'PER_DAY');
+      (salaryPerDay &&
+        salaryPerDay > 0 &&
+        currentEmployment.salaryType === 'PER_DAY');
 
     if (isCentralStateCategory) {
       // For Central/State: per-day rate * present days
@@ -667,11 +670,12 @@ export class PayrollService {
           const [year, monthNum] = payrollMonth.split('-').map(Number);
           const monthDate = new Date(year, monthNum - 1, 15); // Use mid-month date for lookup
           try {
-            const activeRate = await this.salaryRateScheduleService.getActiveRate(
-              salaryCategory,
-              salarySubCategory,
-              monthDate,
-            );
+            const activeRate =
+              await this.salaryRateScheduleService.getActiveRate(
+                salaryCategory,
+                salarySubCategory,
+                monthDate,
+              );
             if (activeRate) {
               wagesPerDay = activeRate.ratePerDay;
               grossSalary = activeRate.ratePerDay * presentDays;
@@ -729,8 +733,10 @@ export class PayrollService {
 
     // Initialize salary calculation object
     const salaryCalculation: Record<string, any> = {
-      monthlySalary: salaryCategory === SalaryCategory.SPECIALIZED ? monthlySalary : null,
-      salaryPerDay: salaryCategory !== SalaryCategory.SPECIALIZED ? salaryPerDay : null,
+      monthlySalary:
+        salaryCategory === SalaryCategory.SPECIALIZED ? monthlySalary : null,
+      salaryPerDay:
+        salaryCategory !== SalaryCategory.SPECIALIZED ? salaryPerDay : null,
       wagesPerDay: Math.round(wagesPerDay * 100) / 100, // Round to 2 decimals
       basicDuty,
       dutyDone: presentDays,
@@ -778,8 +784,7 @@ export class PayrollService {
 
     // Calculate final gross salary with allowances
     const finalGrossSalary = grossSalary + totalAllowances;
-    salaryCalculation.grossSalary =
-      Math.round(finalGrossSalary * 100) / 100;
+    salaryCalculation.grossSalary = Math.round(finalGrossSalary * 100) / 100;
 
     // Calculate PF and ESIC after gross salary is finalized (with allowances)
     // PF and ESIC are calculated only if grossSalary <= 15000

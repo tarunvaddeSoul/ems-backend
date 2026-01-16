@@ -4,7 +4,6 @@ import {
   SalaryRecord,
   SalaryTemplate,
   EmployeeSalaryHistory,
-  Prisma,
 } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -400,10 +399,7 @@ export class PayrollRepository {
       where: {
         employeeId,
         effectiveFrom: { lte: monthEnd },
-        OR: [
-          { effectiveTo: null },
-          { effectiveTo: { gte: monthStart } },
-        ],
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: monthStart } }],
       },
       orderBy: { effectiveFrom: 'desc' },
     });
@@ -425,15 +421,9 @@ export class PayrollRepository {
       where: {
         employeeId: { in: employeeIds },
         effectiveFrom: { lte: monthEnd },
-        OR: [
-          { effectiveTo: null },
-          { effectiveTo: { gte: monthStart } },
-        ],
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: monthStart } }],
       },
-      orderBy: [
-        { employeeId: 'asc' },
-        { effectiveFrom: 'desc' },
-      ],
+      orderBy: [{ employeeId: 'asc' }, { effectiveFrom: 'desc' }],
     });
 
     // Create a map with employeeId as key, taking the most recent entry per employee

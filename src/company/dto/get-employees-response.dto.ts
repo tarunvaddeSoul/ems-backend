@@ -42,7 +42,8 @@ export class GetEmployeesResponseDto {
 
   @ApiPropertyOptional({
     enum: SalarySubCategory,
-    description: 'Salary sub-category (SKILLED, UNSKILLED, HIGHSKILLED, SEMISKILLED)',
+    description:
+      'Salary sub-category (SKILLED, UNSKILLED, HIGHSKILLED, SEMISKILLED)',
   })
   salarySubCategory: SalarySubCategory | null;
 

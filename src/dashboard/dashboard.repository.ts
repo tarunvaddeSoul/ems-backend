@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service'; // Adjust the import path as needed
-
+import { PrismaService } from '../prisma/prisma.service';
 @Injectable()
 export class DashboardRepository {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async getTotalEmployees(): Promise<number> {
     return this.prisma.employee.count();
@@ -19,7 +18,8 @@ export class DashboardRepository {
     );
 
     // Format dates to match the database format (DD-MM-YYYY)
-    const formattedFirstDay = this.formatDateToComparableString(firstDayOfMonth);
+    const formattedFirstDay =
+      this.formatDateToComparableString(firstDayOfMonth);
     const formattedLastDay = this.formatDateToComparableString(lastDayOfMonth);
 
     // Filter employees in memory since we're comparing string dates
@@ -204,5 +204,254 @@ export class DashboardRepository {
       take: limit,
       include: { employee: true, company: true },
     });
+  }
+
+  // Company anniversaries (based on companyOnboardingDate)
+  async getUpcomingCompanyAnniversaries(daysAhead = 30): Promise<any[]> {
+    const today = new Date();
+    const end = new Date();
+    end.setDate(today.getDate() + daysAhead);
+
+    const companies = await this.prisma.company.findMany({
+      select: {
+        id: true,
+        name: true,
+        companyOnboardingDate: true,
+        status: true,
+      },
+    });
+
+    return companies.filter((company) => {
+      if (!company.companyOnboardingDate) return false;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const [day, month, year] = company.companyOnboardingDate
+        .split('-')
+        .map((part) => parseInt(part, 10));
+      const anniversaryThisYear = new Date(today.getFullYear(), month - 1, day);
+      return anniversaryThisYear >= today && anniversaryThisYear <= end;
+    });
+  }
+
+  // Employee growth over time (monthly for last 12 months)
+  async getEmployeeGrowthOverTime(months = 12) {
+    const today = new Date();
+    const data: Array<{ month: string; count: number; newEmployees: number }> =
+      [];
+
+    for (let i = months - 1; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const monthStr = `${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, '0')}`;
+      const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+      // Get all employees and filter by onboarding date
+      const allEmployees = await this.prisma.employee.findMany({
+        select: { employeeOnboardingDate: true },
+      });
+
+      // Count total employees up to this month
+      const totalCount = allEmployees.filter((emp) => {
+        if (!emp.employeeOnboardingDate) return false;
+        const empDate = this.parseDate(emp.employeeOnboardingDate);
+        return empDate <= lastDay;
+      }).length;
+
+      // Count new employees in this month
+      const newEmployees = allEmployees.filter((emp) => {
+        if (!emp.employeeOnboardingDate) return false;
+        const empDate = this.parseDate(emp.employeeOnboardingDate);
+        return empDate >= firstDay && empDate <= lastDay;
+      }).length;
+
+      data.push({
+        month: monthStr,
+        count: totalCount,
+        newEmployees,
+      });
+    }
+
+    return data;
+  }
+
+  // Company growth over time (monthly for last 12 months)
+  async getCompanyGrowthOverTime(months = 12) {
+    const today = new Date();
+    const data: Array<{ month: string; count: number; newCompanies: number }> =
+      [];
+
+    for (let i = months - 1; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const monthStr = `${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, '0')}`;
+      const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+      // Get all companies
+      const allCompanies = await this.prisma.company.findMany({
+        select: { createdAt: true, companyOnboardingDate: true },
+      });
+
+      // Count total companies up to this month (using createdAt or companyOnboardingDate)
+      const totalCount = allCompanies.filter((comp) => {
+        const compDate =
+          comp.createdAt || this.parseDate(comp.companyOnboardingDate);
+        return compDate <= lastDay;
+      }).length;
+
+      // Count new companies in this month
+      const newCompanies = allCompanies.filter((comp) => {
+        const compDate =
+          comp.createdAt || this.parseDate(comp.companyOnboardingDate);
+        return compDate >= firstDay && compDate <= lastDay;
+      }).length;
+
+      data.push({
+        month: monthStr,
+        count: totalCount,
+        newCompanies,
+      });
+    }
+
+    return data;
+  }
+
+  // Company tenure information (how long companies have been with us)
+  async getCompanyTenureInfo() {
+    const companies = await this.prisma.company.findMany({
+      select: {
+        id: true,
+        name: true,
+        companyOnboardingDate: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    const today = new Date();
+    const tenureGroups: Record<string, number> = {
+      '0-6 months': 0,
+      '6-12 months': 0,
+      '1-2 years': 0,
+      '2-5 years': 0,
+      '5+ years': 0,
+    };
+
+    const companyDetails = companies.map((company) => {
+      const onboardingDate = this.parseDate(company.companyOnboardingDate);
+      const monthsDiff =
+        (today.getFullYear() - onboardingDate.getFullYear()) * 12 +
+        (today.getMonth() - onboardingDate.getMonth());
+      const years = monthsDiff / 12;
+
+      let tenureGroup = '5+ years';
+      if (monthsDiff < 6) tenureGroup = '0-6 months';
+      else if (monthsDiff < 12) tenureGroup = '6-12 months';
+      else if (years < 2) tenureGroup = '1-2 years';
+      else if (years < 5) tenureGroup = '2-5 years';
+
+      tenureGroups[tenureGroup]++;
+
+      return {
+        id: company.id,
+        name: company.name,
+        status: company.status,
+        monthsWithUs: monthsDiff,
+        yearsWithUs: parseFloat(years.toFixed(2)),
+        tenureGroup,
+        onboardingDate: company.companyOnboardingDate,
+      };
+    });
+
+    return {
+      tenureDistribution: tenureGroups,
+      companies: companyDetails,
+      averageTenureMonths:
+        companyDetails.length > 0
+          ? companyDetails.reduce((sum, c) => sum + c.monthsWithUs, 0) /
+            companyDetails.length
+          : 0,
+      averageTenureYears:
+        companyDetails.length > 0
+          ? companyDetails.reduce((sum, c) => sum + c.yearsWithUs, 0) /
+            companyDetails.length
+          : 0,
+    };
+  }
+
+  // Employee growth by year (yearly trend)
+  async getEmployeeGrowthByYear(years = 5) {
+    const today = new Date();
+    const data: Array<{ year: number; count: number; newEmployees: number }> =
+      [];
+
+    for (let i = years - 1; i >= 0; i--) {
+      const year = today.getFullYear() - i;
+      const yearStart = new Date(year, 0, 1);
+      const yearEnd = new Date(year, 11, 31);
+
+      const allEmployees = await this.prisma.employee.findMany({
+        select: { employeeOnboardingDate: true },
+      });
+
+      const totalCount = allEmployees.filter((emp) => {
+        if (!emp.employeeOnboardingDate) return false;
+        const empDate = this.parseDate(emp.employeeOnboardingDate);
+        return empDate <= yearEnd;
+      }).length;
+
+      const newEmployees = allEmployees.filter((emp) => {
+        if (!emp.employeeOnboardingDate) return false;
+        const empDate = this.parseDate(emp.employeeOnboardingDate);
+        return empDate >= yearStart && empDate <= yearEnd;
+      }).length;
+
+      data.push({
+        year,
+        count: totalCount,
+        newEmployees,
+      });
+    }
+
+    return data;
+  }
+
+  // Company growth by year (yearly trend)
+  async getCompanyGrowthByYear(years = 5) {
+    const today = new Date();
+    const data: Array<{ year: number; count: number; newCompanies: number }> =
+      [];
+
+    for (let i = years - 1; i >= 0; i--) {
+      const year = today.getFullYear() - i;
+      const yearStart = new Date(year, 0, 1);
+      const yearEnd = new Date(year, 11, 31);
+
+      const allCompanies = await this.prisma.company.findMany({
+        select: { createdAt: true, companyOnboardingDate: true },
+      });
+
+      const totalCount = allCompanies.filter((comp) => {
+        const compDate =
+          comp.createdAt || this.parseDate(comp.companyOnboardingDate);
+        return compDate <= yearEnd;
+      }).length;
+
+      const newCompanies = allCompanies.filter((comp) => {
+        const compDate =
+          comp.createdAt || this.parseDate(comp.companyOnboardingDate);
+        return compDate >= yearStart && compDate <= yearEnd;
+      }).length;
+
+      data.push({
+        year,
+        count: totalCount,
+        newCompanies,
+      });
+    }
+
+    return data;
   }
 }

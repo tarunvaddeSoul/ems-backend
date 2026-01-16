@@ -39,7 +39,10 @@ export class SalaryRateScheduleController {
     description: 'The salary rate schedule has been successfully created.',
   })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
-  @ApiResponse({ status: 409, description: 'Conflict - Overlapping rate exists.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict - Overlapping rate exists.',
+  })
   async create(
     @Body() createDto: CreateSalaryRateScheduleDto,
     @Res() res: Response,
@@ -84,7 +87,10 @@ export class SalaryRateScheduleController {
   })
   @ApiResponse({ status: 404, description: 'Salary rate schedule not found.' })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
-  @ApiResponse({ status: 409, description: 'Conflict - Overlapping rate exists.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict - Overlapping rate exists.',
+  })
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateSalaryRateScheduleDto,
@@ -109,12 +115,17 @@ export class SalaryRateScheduleController {
 
   @Get('active/:category/:subCategory')
   @ApiOperation({
-    summary: 'Get all active salary rate schedules for a category and subcategory',
+    summary:
+      'Get all active salary rate schedules for a category and subcategory',
   })
-  @ApiParam({ name: 'category', description: 'Salary category (CENTRAL, STATE, SPECIALIZED)' })
+  @ApiParam({
+    name: 'category',
+    description: 'Salary category (CENTRAL, STATE, SPECIALIZED)',
+  })
   @ApiParam({
     name: 'subCategory',
-    description: 'Salary sub-category (SKILLED, UNSKILLED, HIGHSKILLED, SEMISKILLED)',
+    description:
+      'Salary sub-category (SKILLED, UNSKILLED, HIGHSKILLED, SEMISKILLED)',
   })
   @ApiResponse({
     status: 200,
@@ -126,19 +137,24 @@ export class SalaryRateScheduleController {
     @Res() res: Response,
   ) {
     // Eager validation of category and subCategory enums
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { SalaryCategory, SalarySubCategory } = require('@prisma/client');
 
     if (!Object.values(SalaryCategory).includes(category)) {
       return res.status(400).json({
         statusCode: 400,
-        message: `Invalid category. Allowed values: ${Object.values(SalaryCategory).join(', ')}`,
+        message: `Invalid category. Allowed values: ${Object.values(
+          SalaryCategory,
+        ).join(', ')}`,
       });
     }
 
     if (!Object.values(SalarySubCategory).includes(subCategory)) {
       return res.status(400).json({
         statusCode: 400,
-        message: `Invalid subCategory. Allowed values: ${Object.values(SalarySubCategory).join(', ')}`,
+        message: `Invalid subCategory. Allowed values: ${Object.values(
+          SalarySubCategory,
+        ).join(', ')}`,
       });
     }
 
@@ -152,12 +168,17 @@ export class SalaryRateScheduleController {
 
   @Get('rate-for-date/:category/:subCategory')
   @ApiOperation({
-    summary: 'Get rate schedule that was effective on a specific date (includes historical rates)',
+    summary:
+      'Get rate schedule that was effective on a specific date (includes historical rates)',
   })
-  @ApiParam({ name: 'category', description: 'Salary category (CENTRAL, STATE)' })
+  @ApiParam({
+    name: 'category',
+    description: 'Salary category (CENTRAL, STATE)',
+  })
   @ApiParam({
     name: 'subCategory',
-    description: 'Salary sub-category (SKILLED, UNSKILLED, HIGHSKILLED, SEMISKILLED)',
+    description:
+      'Salary sub-category (SKILLED, UNSKILLED, HIGHSKILLED, SEMISKILLED)',
   })
   @ApiQuery({
     name: 'date',
@@ -174,19 +195,24 @@ export class SalaryRateScheduleController {
     @Query('date') dateString: string,
     @Res() res: Response,
   ) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { SalaryCategory, SalarySubCategory } = require('@prisma/client');
 
     if (!Object.values(SalaryCategory).includes(category)) {
       return res.status(400).json({
         statusCode: 400,
-        message: `Invalid category. Allowed values: ${Object.values(SalaryCategory).join(', ')}`,
+        message: `Invalid category. Allowed values: ${Object.values(
+          SalaryCategory,
+        ).join(', ')}`,
       });
     }
 
     if (!Object.values(SalarySubCategory).includes(subCategory)) {
       return res.status(400).json({
         statusCode: 400,
-        message: `Invalid subCategory. Allowed values: ${Object.values(SalarySubCategory).join(', ')}`,
+        message: `Invalid subCategory. Allowed values: ${Object.values(
+          SalarySubCategory,
+        ).join(', ')}`,
       });
     }
 
@@ -202,7 +228,8 @@ export class SalaryRateScheduleController {
       if (isNaN(date.getTime())) {
         return res.status(400).json({
           statusCode: 400,
-          message: 'Invalid date format. Use ISO 8601 format (e.g., 2024-04-15)',
+          message:
+            'Invalid date format. Use ISO 8601 format (e.g., 2024-04-15)',
         });
       }
 
@@ -233,4 +260,3 @@ export class SalaryRateScheduleController {
     }
   }
 }
-
