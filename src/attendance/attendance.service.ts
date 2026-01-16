@@ -12,6 +12,7 @@ import { BulkMarkAttendanceDto } from './dto/bulk-mark-attendance.dto';
 import { Attendance } from '@prisma/client';
 import { CompanyRepository } from 'src/company/company.repository';
 import { UploadAttendanceSheetDto } from './dto/upload-attendance-sheet.dto';
+import { UploadAttendanceExcelDto } from './dto/upload-attendance-excel.dto';
 import { AwsS3Service } from 'src/aws/aws-s3.service';
 import { IResponse } from 'src/types/response.interface';
 import { GetActiveEmployeesDto } from './dto/get-active-employees.dto';
@@ -19,7 +20,6 @@ import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AttendanceReportResponseDto } from './dto/attendance-report-response.dto';
 import { ListAttendanceQueryDto } from './dto/list-attendance-query.dto';
 import { ListAttendanceSheetsDto } from './dto/list-attendance-sheets.dto';
-import { Response } from 'express';
 
 @Injectable()
 export class AttendanceService {
@@ -199,8 +199,8 @@ export class AttendanceService {
         }
       }
 
-      // Upload new file
-      const folder = `attendance-sheets/${company.name}`;
+      // Upload new file to attendance/{company}/finalized folder
+      const folder = `attendance/${company.name}/finalized`;
       const attendanceSheetUrl = await this.uploadFile(
         attendanceSheet,
         `${folder}/${month}`,
@@ -219,6 +219,81 @@ export class AttendanceService {
       };
     } catch (error) {
       this.logger.error(`Error in uploadAttendanceSheet`, error.stack);
+      throw error;
+    }
+  }
+
+  async uploadAttendanceExcel(
+    uploadAttendanceExcelDto: UploadAttendanceExcelDto,
+    attendanceExcel: Express.Multer.File,
+  ): Promise<IResponse<any>> {
+    try {
+      const { companyId, month } = uploadAttendanceExcelDto;
+      const company = await this.companyRepository.findById(companyId);
+      if (!company) {
+        throw new NotFoundException(`Company with ID ${companyId} not found.`);
+      }
+      if (!attendanceExcel) {
+        throw new BadRequestException('file is required');
+      }
+      const allowed = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+      ];
+      const maxBytes = 10 * 1024 * 1024; // 10 MB
+      if (!allowed.includes(attendanceExcel.mimetype)) {
+        throw new BadRequestException(
+          'Unsupported file type. Only XLSX and XLS files are allowed.',
+        );
+      }
+      if (attendanceExcel.size > maxBytes) {
+        throw new BadRequestException('File too large');
+      }
+
+      // Check for existing Excel file and delete old file if exists
+      const existingExcel =
+        await this.attendanceRepository.getAttendanceExcelByCompanyAndMonth(
+          companyId,
+          month,
+        );
+      if (existingExcel && existingExcel.attendanceExcelUrl) {
+        // Extract S3 key from URL and delete old file
+        const oldKey = this.extractS3KeyFromUrl(
+          existingExcel.attendanceExcelUrl,
+        );
+        if (oldKey) {
+          try {
+            await this.awsS3Service.deleteFile(oldKey);
+          } catch (deleteError) {
+            this.logger.warn(
+              `Failed to delete old Excel file from S3: ${deleteError.message}`,
+            );
+            // Continue with upload even if deletion fails
+          }
+        }
+      }
+
+      // Upload new Excel file to attendance/{company}/prefinalized folder
+      const folder = `attendance/${company.name}/prefinalized`;
+      const attendanceExcelUrl = await this.uploadFile(
+        attendanceExcel,
+        `${folder}/${month}`,
+      );
+
+      // Save/update database record
+      const saveAttendanceExcelResponse =
+        await this.attendanceRepository.saveAttendanceExcel(
+          companyId,
+          month,
+          attendanceExcelUrl,
+        );
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: 'Attendance Excel file uploaded',
+        data: saveAttendanceExcelResponse,
+      };
+    } catch (error) {
+      this.logger.error(`Error in uploadAttendanceExcel`, error.stack);
       throw error;
     }
   }
@@ -565,6 +640,7 @@ export class AttendanceService {
             companyName: company?.name || 'Unknown',
             month: sheet.month,
             attendanceSheetUrl: sheet.attendanceSheetUrl,
+            createdAt: sheet.createdAt,
           },
         };
       }
@@ -587,6 +663,73 @@ export class AttendanceService {
     }
   }
 
+  async listAttendanceExcel(
+    query: ListAttendanceSheetsDto,
+  ): Promise<IResponse<any>> {
+    try {
+      // Validation: month cannot be used with startMonth/endMonth
+      if (query.month && (query.startMonth || query.endMonth)) {
+        throw new BadRequestException(
+          'month cannot be used with startMonth or endMonth',
+        );
+      }
+
+      // Validation: startMonth must be <= endMonth
+      if (query.startMonth && query.endMonth) {
+        if (query.startMonth > query.endMonth) {
+          throw new BadRequestException(
+            'startMonth must be less than or equal to endMonth',
+          );
+        }
+      }
+
+      // If both companyId and month are provided, return single record (backward compatibility)
+      if (query.companyId && query.month) {
+        const excel =
+          await this.attendanceRepository.getAttendanceExcelByCompanyAndMonth(
+            query.companyId,
+            query.month,
+          );
+        if (!excel) {
+          return {
+            statusCode: HttpStatus.OK,
+            message: 'No Excel file found',
+            data: null,
+          };
+        }
+
+        // Get company name
+        const company = await this.companyRepository.findById(query.companyId);
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'OK',
+          data: {
+            id: excel.id,
+            companyId: excel.companyId,
+            companyName: company?.name || 'Unknown',
+            month: excel.month,
+            attendanceExcelUrl: excel.attendanceExcelUrl,
+            createdAt: excel.createdAt,
+          },
+        };
+      }
+
+      // Otherwise, use list endpoint with pagination (filter for Excel files only)
+      const result = await this.attendanceRepository.listAttendanceExcel(query);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Attendance Excel files retrieved successfully',
+        data: {
+          data: result.data,
+          pagination: result.pagination,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error listing attendance Excel files`, error.stack);
+      throw error;
+    }
+  }
+
   async deleteAttendanceSheetById(id: string): Promise<IResponse<any>> {
     try {
       // find the sheet and delete the file from S3
@@ -596,8 +739,18 @@ export class AttendanceService {
       }
       // delete file from storage if url present
       if (sheet.attendanceSheetUrl) {
-        await this.awsS3Service.deleteFile(sheet.attendanceSheetUrl);
+        const oldKey = this.extractS3KeyFromUrl(sheet.attendanceSheetUrl);
+        if (oldKey) {
+          try {
+            await this.awsS3Service.deleteFile(oldKey);
+          } catch (deleteError) {
+            this.logger.warn(
+              `Failed to delete sheet file from S3: ${deleteError.message}`,
+            );
+          }
+        }
       }
+      // Delete the record (independent table)
       await this.attendanceRepository.deleteAttendanceSheetById(id);
       return {
         statusCode: HttpStatus.OK,
@@ -606,6 +759,37 @@ export class AttendanceService {
       };
     } catch (error) {
       this.logger.error(`Error deleting attendance sheet: ${id}`);
+      throw error;
+    }
+  }
+
+  async deleteAttendanceExcelFile(id: string): Promise<IResponse<any>> {
+    try {
+      // find the excel file and delete from S3
+      const excel = await this.attendanceRepository.getAttendanceExcelById(id);
+      if (!excel) {
+        throw new NotFoundException(`Attendance Excel file not found`);
+      }
+      // delete excel file from storage
+      const oldKey = this.extractS3KeyFromUrl(excel.attendanceExcelUrl);
+      if (oldKey) {
+        try {
+          await this.awsS3Service.deleteFile(oldKey);
+        } catch (deleteError) {
+          this.logger.warn(
+            `Failed to delete Excel file from S3: ${deleteError.message}`,
+          );
+        }
+      }
+      // Delete the record (independent table)
+      await this.attendanceRepository.deleteAttendanceExcelById(id);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Attendance Excel file deleted',
+        data: null,
+      };
+    } catch (error) {
+      this.logger.error(`Error deleting attendance Excel file: ${id}`);
       throw error;
     }
   }
@@ -654,7 +838,7 @@ export class AttendanceService {
       const maxPresent = presentCountsArr.length
         ? Math.max(...presentCountsArr)
         : 0;
-      // Get attendanceSheet
+      // Get attendanceSheet (if exists)
       const attendanceSheetObj =
         await this.attendanceRepository.getAttendanceSheetByCompanyAndMonth(
           companyId,
@@ -699,7 +883,7 @@ export class AttendanceService {
   async getAttendanceReportPdf(
     companyId: string,
     month: string,
-    res: Response,
+    res: any,
   ): Promise<any> {
     // Stub for now: send JSON error or placeholder.
     return res

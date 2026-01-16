@@ -29,6 +29,7 @@ import { BulkMarkAttendanceDto } from './dto/bulk-mark-attendance.dto';
 import { TransformInterceptor } from 'src/common/transform-interceptor';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadAttendanceSheetDto } from './dto/upload-attendance-sheet.dto';
+import { UploadAttendanceExcelDto } from './dto/upload-attendance-excel.dto';
 import { GetAttendanceByCompanyAndMonthDto } from './dto/get-attendance.dto';
 import { GetActiveEmployeesDto } from './dto/get-active-employees.dto';
 import { Response } from 'express';
@@ -255,6 +256,33 @@ export class AttendanceController {
     return res.status(response.statusCode).json(response);
   }
 
+  @Post('/attendance-excel')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary:
+      'Upload or replace the attendance Excel file for a company + month',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({
+    status: 201,
+    type: AttendanceSheetResponseDto,
+    description: 'Attendance Excel file uploaded',
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 404, description: 'Company not found' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadOrReplaceAttendanceExcel(
+    @Res() res: Response,
+    @Body() uploadAttendanceExcelDto: UploadAttendanceExcelDto,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<Response> {
+    const response = await this.attendanceService.uploadAttendanceExcel(
+      uploadAttendanceExcelDto,
+      file,
+    );
+    return res.status(response.statusCode).json(response);
+  }
+
   @Get('/attendance-sheets')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -276,16 +304,58 @@ export class AttendanceController {
     return res.status(response.statusCode).json(response);
   }
 
+  @Get('/attendance-excel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'List attendance Excel files with filtering and pagination',
+    description:
+      'Fetch all attendance Excel files with optional filtering by companyId, month, or month range. Supports pagination and sorting. Only returns records that have Excel files uploaded. When both companyId and month are provided, returns single record (backward compatible).',
+  })
+  @ApiResponse({
+    status: 200,
+    type: AttendanceSheetListResponseDto,
+    description: 'Attendance Excel files retrieved successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request - validation error' })
+  async getAttendanceExcel(
+    @Res() res: Response,
+    @Query() query: ListAttendanceSheetsDto,
+  ): Promise<Response> {
+    const response = await this.attendanceService.listAttendanceExcel(query);
+    return res.status(response.statusCode).json(response);
+  }
+
   @Delete('/attendance-sheets/:id')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete attendance sheet entry and file' })
-  @ApiResponse({ status: 200, description: 'Attendance sheet deleted' })
+  @ApiOperation({
+    summary: 'Delete attendance sheet file',
+    description:
+      'Deletes the finalized sheet file (PDF/image) from S3 and removes the record from the database. This is independent of Excel files.',
+  })
+  @ApiResponse({ status: 200, description: 'Attendance sheet file deleted' })
   @ApiResponse({ status: 404, description: 'Sheet not found' })
   async deleteAttendanceSheetById(
     @Res() res: Response,
     @Param('id') id: string,
   ): Promise<Response> {
     const response = await this.attendanceService.deleteAttendanceSheetById(id);
+    return res.status(response.statusCode).json(response);
+  }
+
+  @Delete('/attendance-excel/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Delete attendance Excel file',
+    description:
+      'Deletes the prefinalized Excel file from S3 and removes the record from the database. This is independent of sheet files.',
+  })
+  @ApiResponse({ status: 200, description: 'Attendance Excel file deleted' })
+  @ApiResponse({ status: 404, description: 'Excel file not found' })
+  async deleteAttendanceExcelFile(
+    @Res() res: Response,
+    @Param('id') id: string,
+  ): Promise<Response> {
+    const response = await this.attendanceService.deleteAttendanceExcelFile(id);
     return res.status(response.statusCode).json(response);
   }
 
@@ -354,7 +424,7 @@ export class AttendanceController {
     @Res() res: Response,
     @Query('companyId') companyId: string,
     @Query('month') month: string,
-  ): Promise<Response> {
+  ): Promise<any> {
     return this.attendanceService.getAttendanceReportPdf(companyId, month, res);
   }
 

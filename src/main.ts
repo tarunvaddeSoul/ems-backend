@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { NestExpressApplication } from '@nestjs/platform-express';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -119,5 +119,9 @@ async function bootstrap() {
   });
   const port = process.env.PORT || 3003;
   await app.listen(port);
+  const logger = new Logger();
+  logger.log(`Server is running on port ${port}`);
+  logger.log(`Swagger is running on http://localhost:${port}/api-docs`);
+  logger.log(`API Docs are available at http://localhost:${port}/api-docs`);
 }
 bootstrap();
