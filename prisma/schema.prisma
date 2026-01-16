@@ -360,10 +360,21 @@ model Attendance {
 }
 
 model AttendanceSheet {
-  id                 String @id @default(uuid())
+  id                 String   @id @default(uuid())
   companyId          String
   month              String
   attendanceSheetUrl String
+  createdAt          DateTime @default(now())
+
+  @@unique([companyId, month])
+}
+
+model AttendanceExcel {
+  id                 String   @id @default(uuid())
+  companyId          String
+  month              String
+  attendanceExcelUrl String
+  createdAt          DateTime @default(now())
 
   @@unique([companyId, month])
 }
